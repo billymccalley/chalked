@@ -211,9 +211,24 @@ CREATE TABLE IF NOT EXISTS activity_events (
   created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS system_status (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS user_moderation (
+  user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  status TEXT NOT NULL,
+  reason TEXT,
+  updated_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+  updated_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_picks_league_user ON picks(league_id, user_id);
 CREATE INDEX IF NOT EXISTS idx_matchups_slate ON matchups(slate_id);
 CREATE INDEX IF NOT EXISTS idx_memberships_user ON memberships(user_id);
 CREATE INDEX IF NOT EXISTS idx_playoffs_league ON playoff_matchups(league_id, round_no, matchup_no);
 CREATE INDEX IF NOT EXISTS idx_activity_league ON activity_events(league_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_email_tokens_hash ON email_tokens(token_hash);
+CREATE INDEX IF NOT EXISTS idx_user_moderation_status ON user_moderation(status);

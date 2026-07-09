@@ -6,6 +6,7 @@ from pathlib import Path
 from backend.chalked_backend import services
 from backend.chalked_backend.server import cookie_header
 from backend.chalked_backend.storage import upload_image
+from backend.chalked_backend.storage import upload_storage_status
 from backend.chalked_backend.db import init_db, transaction
 from backend.chalked_backend.providers import GameInfo, Player
 from backend.chalked_backend.services import (
@@ -26,8 +27,11 @@ from backend.chalked_backend.services import (
     player_stat_value,
     request_email_verification,
     request_password_reset,
+    record_system_status,
     refresh_active_slate,
+    set_user_moderation,
     settle_due_slates,
+    admin_overview,
     update_profile,
     update_settings,
 )
@@ -226,6 +230,34 @@ class ServiceTests(unittest.TestCase):
             self.assertIn("league_created", kinds)
             self.assertIn("member_joined", kinds)
             self.assertIn("pick_locked", kinds)
+
+    def test_admin_can_blacklist_and_clear_accounts(self):
+        old_admins = os.environ.get("CHALKED_ADMIN_HANDLES")
+        try:
+            os.environ["CHALKED_ADMIN_HANDLES"] = "boss"
+            with transaction(self.db_path) as conn:
+                ensure_seeded(conn)
+                admin = create_user(conn, {"handle": "boss", "password": "secret123"})
+                user = create_user(conn, {"handle": "badacct", "password": "secret123"})
+                record_system_status(conn, "settlement", {"ok": True, "result": {"checked": 1, "settled": 0}})
+
+                set_user_moderation(conn, admin["id"], user["id"], "blacklisted", "testing blacklist")
+                overview = admin_overview(conn, admin["id"])
+
+                self.assertEqual(overview["counts"]["blacklisted"], 1)
+                self.assertEqual(overview["cron"]["value"]["result"]["checked"], 1)
+                with self.assertRaises(ApiError) as blocked:
+                    login(conn, {"login": "badacct", "password": "secret123"})
+                self.assertEqual(blocked.exception.status, 403)
+
+                set_user_moderation(conn, admin["id"], user["id"], "active")
+                public, _ = login(conn, {"login": "badacct", "password": "secret123"})
+                self.assertEqual(public["handle"], "badacct")
+        finally:
+            if old_admins is None:
+                os.environ.pop("CHALKED_ADMIN_HANDLES", None)
+            else:
+                os.environ["CHALKED_ADMIN_HANDLES"] = old_admins
 
     def test_pick_locks_per_matchup_not_whole_slate(self):
         with transaction(self.db_path) as conn:
@@ -483,6 +515,8 @@ class ServiceTests(unittest.TestCase):
             "CHALKED_UPLOAD_ENDPOINT",
             "CHALKED_UPLOAD_ACCESS_KEY_ID",
             "CHALKED_UPLOAD_SECRET_ACCESS_KEY",
+            "CHALKED_REQUIRE_OBJECT_STORAGE",
+            "CHALKED_ENV",
         ]
         old = {key: os.environ.pop(key, None) for key in keys}
         try:
@@ -495,6 +529,33 @@ class ServiceTests(unittest.TestCase):
             for key, value in old.items():
                 if value is not None:
                     os.environ[key] = value
+                else:
+                    os.environ.pop(key, None)
+
+    def test_production_uploads_require_object_storage(self):
+        keys = [
+            "CHALKED_UPLOAD_BUCKET",
+            "CHALKED_UPLOAD_ENDPOINT",
+            "CHALKED_UPLOAD_ACCESS_KEY_ID",
+            "CHALKED_UPLOAD_SECRET_ACCESS_KEY",
+            "CHALKED_REQUIRE_OBJECT_STORAGE",
+            "CHALKED_ENV",
+        ]
+        old = {key: os.environ.pop(key, None) for key in keys}
+        try:
+            os.environ["CHALKED_ENV"] = "production"
+            status = upload_storage_status()
+            self.assertTrue(status["required"])
+            self.assertFalse(status["local_allowed"])
+            with tempfile.TemporaryDirectory() as tmp:
+                with self.assertRaises(RuntimeError):
+                    upload_image(b"fake-image", "image/png", ".png", Path(tmp))
+        finally:
+            for key, value in old.items():
+                if value is not None:
+                    os.environ[key] = value
+                else:
+                    os.environ.pop(key, None)
 
 
 if __name__ == "__main__":

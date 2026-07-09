@@ -70,6 +70,7 @@ def public_user(row: sqlite3.Row | dict) -> dict[str, Any]:
         "avatar_url": row["avatar_url"],
         "email_verified_at": row["email_verified_at"] if "email_verified_at" in row.keys() else None,
         "last_handle_change_at": row["last_handle_change_at"] if "last_handle_change_at" in row.keys() else None,
+        "is_admin": is_admin_user(row),
     }
 
 
@@ -81,6 +82,35 @@ def require_fields(data: dict, *fields: str) -> None:
 
 def demo_seed_enabled() -> bool:
     return os.getenv("CHALKED_DEMO_MODE", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def admin_identifiers() -> set[str]:
+    raw = os.getenv("CHALKED_ADMIN_HANDLES", "")
+    return {item.strip().lower() for item in raw.split(",") if item.strip()}
+
+
+def is_admin_user(row: sqlite3.Row | dict | None) -> bool:
+    if not row:
+        return False
+    admins = admin_identifiers()
+    handle = str(row["handle"] or "").lower()
+    email = str(row["email"] or "").lower()
+    return bool(admins and (handle in admins or email in admins))
+
+
+def require_admin(user: sqlite3.Row | dict) -> None:
+    if not is_admin_user(user):
+        raise ApiError(403, "Admin access required")
+
+
+def moderation_status(conn: sqlite3.Connection, user_id: str) -> str | None:
+    row = conn.execute("SELECT status FROM user_moderation WHERE user_id = ?", (user_id,)).fetchone()
+    return row["status"] if row else None
+
+
+def require_account_allowed(conn: sqlite3.Connection, user_id: str) -> None:
+    if moderation_status(conn, user_id) == "blacklisted":
+        raise ApiError(403, "This account has been blacklisted")
 
 
 def ensure_seeded(conn: sqlite3.Connection, sync_players: bool = False) -> None:
@@ -177,6 +207,7 @@ def login(conn: sqlite3.Connection, data: dict, meta: dict | None = None) -> tup
     ).fetchone()
     if not user or not verify_password(data["password"], user["password_hash"]):
         raise ApiError(401, "Invalid username/email or password")
+    require_account_allowed(conn, user["id"])
     session_id = new_id("ses")
     meta = meta or {}
     conn.execute(
@@ -206,6 +237,7 @@ def user_from_session(conn: sqlite3.Connection, session_id: str | None) -> dict 
         (session_id, now_iso()),
     ).fetchone()
     if row:
+        require_account_allowed(conn, row["id"])
         conn.execute("UPDATE sessions SET last_seen_at = ? WHERE id = ?", (now_iso(), session_id))
     return row_to_dict(row)
 
@@ -421,6 +453,102 @@ def activity_feed(conn: sqlite3.Connection, user_id: str, league_id: str, limit:
             for r in rows
         ]
     }
+
+
+def record_system_status(conn: sqlite3.Connection, key: str, value: dict) -> dict:
+    stamp = now_iso()
+    payload = json.dumps(value, sort_keys=True)
+    conn.execute(
+        """
+        INSERT INTO system_status (key, value, updated_at)
+        VALUES (?, ?, ?)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+        """,
+        (key, payload, stamp),
+    )
+    return {"key": key, "value": value, "updated_at": stamp}
+
+
+def system_status(conn: sqlite3.Connection, key: str) -> dict | None:
+    row = conn.execute("SELECT * FROM system_status WHERE key = ?", (key,)).fetchone()
+    if not row:
+        return None
+    return {"key": row["key"], "value": json.loads(row["value"] or "{}"), "updated_at": row["updated_at"]}
+
+
+def admin_overview(conn: sqlite3.Connection, user_id: str) -> dict:
+    user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    require_admin(user)
+    counts = {
+        "users": conn.execute("SELECT COUNT(*) c FROM users").fetchone()["c"],
+        "leagues": conn.execute("SELECT COUNT(*) c FROM leagues").fetchone()["c"],
+        "open_slates": conn.execute("SELECT COUNT(*) c FROM slates WHERE status = 'open'").fetchone()["c"],
+        "open_picks": conn.execute("SELECT COUNT(*) c FROM picks WHERE status = 'open'").fetchone()["c"],
+        "blacklisted": conn.execute("SELECT COUNT(*) c FROM user_moderation WHERE status = 'blacklisted'").fetchone()["c"],
+    }
+    users = conn.execute(
+        """
+        SELECT u.id, u.handle, u.email, u.display_name, u.created_at,
+               COALESCE(m.status, 'active') moderation_status, m.reason moderation_reason, m.updated_at moderation_updated_at,
+               (SELECT COUNT(*) FROM memberships WHERE user_id = u.id) league_count,
+               (SELECT COUNT(*) FROM picks WHERE user_id = u.id) pick_count
+        FROM users u
+        LEFT JOIN user_moderation m ON m.user_id = u.id
+        ORDER BY CASE WHEN m.status = 'blacklisted' THEN 0 ELSE 1 END, u.created_at DESC
+        LIMIT 100
+        """
+    ).fetchall()
+    return {
+        "counts": counts,
+        "cron": system_status(conn, "settlement"),
+        "users": [
+            {
+                "id": r["id"],
+                "handle": r["handle"],
+                "email": r["email"],
+                "display_name": r["display_name"] or r["handle"],
+                "created_at": r["created_at"],
+                "moderation_status": r["moderation_status"],
+                "moderation_reason": r["moderation_reason"],
+                "moderation_updated_at": r["moderation_updated_at"],
+                "league_count": r["league_count"],
+                "pick_count": r["pick_count"],
+                "is_admin": is_admin_user(r),
+            }
+            for r in users
+        ],
+    }
+
+
+def set_user_moderation(conn: sqlite3.Connection, admin_id: str, target_user_id: str, status: str, reason: str | None = None) -> dict:
+    admin = conn.execute("SELECT * FROM users WHERE id = ?", (admin_id,)).fetchone()
+    require_admin(admin)
+    target = conn.execute("SELECT * FROM users WHERE id = ?", (target_user_id,)).fetchone()
+    if not target:
+        raise ApiError(404, "User not found")
+    if target_user_id == admin_id and status == "blacklisted":
+        raise ApiError(400, "You cannot blacklist your own account")
+    if is_admin_user(target) and status == "blacklisted":
+        raise ApiError(400, "Admin accounts cannot be blacklisted")
+    if status not in {"active", "blacklisted"}:
+        raise ApiError(400, "Invalid moderation status")
+    if status == "active":
+        conn.execute("DELETE FROM user_moderation WHERE user_id = ?", (target_user_id,))
+    else:
+        conn.execute(
+            """
+            INSERT INTO user_moderation (user_id, status, reason, updated_by, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET
+              status = excluded.status,
+              reason = excluded.reason,
+              updated_by = excluded.updated_by,
+              updated_at = excluded.updated_at
+            """,
+            (target_user_id, status, (reason or "Blacklisted by admin").strip()[:240], admin_id, now_iso()),
+        )
+        conn.execute("DELETE FROM sessions WHERE user_id = ?", (target_user_id,))
+    return {"user_id": target_user_id, "status": status}
 
 
 def update_profile(conn: sqlite3.Connection, user_id: str, data: dict) -> dict:

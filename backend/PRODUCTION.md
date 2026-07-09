@@ -58,6 +58,8 @@ CHALKED_PUBLIC_URL=https://playchalked.com
 CHALKED_ALLOWED_ORIGINS=https://playchalked.com,https://www.playchalked.com
 CHALKED_DB=/data/chalked.sqlite3
 CHALKED_CRON_SECRET=generate-a-long-random-secret
+CHALKED_ADMIN_HANDLES=your-admin-username-or-email
+CHALKED_REQUIRE_OBJECT_STORAGE=1
 CHALKED_MAIL_FROM=Chalked <noreply@playchalked.com>
 CHALKED_SMTP_HOST=your-smtp-host
 CHALKED_SMTP_PORT=587
@@ -124,6 +126,8 @@ CHALKED_UPLOAD_PREFIX=uploads
 
 If those env vars are missing, Chalked falls back to local `/uploads/...` storage.
 
+For production, set `CHALKED_REQUIRE_OBJECT_STORAGE=1`. This makes uploads fail loudly if R2/S3 is missing instead of silently writing images to Render's app filesystem.
+
 ## Scheduled settlement
 
 Production should not rely on users opening the slate page to settle games. Call this endpoint every 2-5 minutes during MLB game windows:
@@ -134,6 +138,18 @@ Authorization: Bearer $CHALKED_CRON_SECRET
 ```
 
 The endpoint checks open slates, syncs MLB live-feed stats, and settles final matchups/picks. If `CHALKED_CRON_SECRET` is not set, the endpoint returns 404.
+
+Every successful cron call records a `settlement` heartbeat in the database. Admin users can verify the cron freshness from the in-app Admin tab.
+
+## Admin access
+
+Set `CHALKED_ADMIN_HANDLES` to a comma-separated list of admin usernames or emails, for example:
+
+```text
+CHALKED_ADMIN_HANDLES=billy@playchalked.com,billy
+```
+
+Admin users see an Admin tab with cron freshness, upload storage mode, beta counts, and account blacklist controls. Blacklisted accounts are signed out and blocked from logging back in.
 
 ## Domain setup
 

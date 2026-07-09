@@ -14,9 +14,10 @@ from typing import Callable
 from urllib.parse import parse_qs, urlparse
 
 from .db import init_db, transaction
-from .storage import upload_image
+from .storage import upload_image, upload_storage_status
 from .services import (
     ApiError,
+    admin_overview,
     activity_feed,
     create_league,
     create_pick,
@@ -41,7 +42,9 @@ from .services import (
     leave_league,
     request_email_verification,
     request_password_reset,
+    record_system_status,
     session_rows,
+    set_user_moderation,
     settle_due_slates,
     update_league_profile,
     update_profile,
@@ -238,7 +241,17 @@ def settle_system_route(req: RequestHandler, _: dict[str, str]) -> dict:
     require_system_secret(req)
     with transaction() as conn:
         ensure_seeded(conn)
-        return settle_due_slates(conn, force=True)
+        result = settle_due_slates(conn, force=True)
+        record_system_status(
+            conn,
+            "settlement",
+            {
+                "ok": True,
+                "result": result,
+                "user_agent": req.headers.get("user-agent"),
+            },
+        )
+        return result
 
 
 def register(req: RequestHandler, _: dict[str, str]) -> object:
@@ -459,6 +472,29 @@ def activity_route(req: RequestHandler, params: dict[str, str]) -> dict:
         return activity_feed(conn, user["id"], params["league_id"])
 
 
+def admin_status_route(req: RequestHandler, _: dict[str, str]) -> dict:
+    user = req.current_user()
+    with transaction() as conn:
+        ensure_seeded(conn)
+        data = admin_overview(conn, user["id"])
+    data["storage"] = upload_storage_status()
+    return data
+
+
+def admin_blacklist_route(req: RequestHandler, params: dict[str, str]) -> dict:
+    user = req.current_user()
+    with transaction() as conn:
+        ensure_seeded(conn)
+        return set_user_moderation(conn, user["id"], params["user_id"], "blacklisted", req.read_json().get("reason"))
+
+
+def admin_clear_blacklist_route(req: RequestHandler, params: dict[str, str]) -> dict:
+    user = req.current_user()
+    with transaction() as conn:
+        ensure_seeded(conn)
+        return set_user_moderation(conn, user["id"], params["user_id"], "active")
+
+
 class _AlreadyWritten:
     pass
 
@@ -480,6 +516,9 @@ ROUTES: list[tuple[str, str, RouteHandler]] = [
     ("GET", r"/api/profile", profile_route),
     ("PATCH", r"/api/profile", update_profile_route),
     ("POST", r"/api/uploads", upload_route),
+    ("GET", r"/api/admin/status", admin_status_route),
+    ("POST", r"/api/admin/users/(?P<user_id>[^/]+)/blacklist", admin_blacklist_route),
+    ("DELETE", r"/api/admin/users/(?P<user_id>[^/]+)/blacklist", admin_clear_blacklist_route),
     ("GET", r"/api/leagues", leagues),
     ("POST", r"/api/leagues", create_league_route),
     ("DELETE", r"/api/leagues/(?P<league_id>[^/]+)", delete_league_route),

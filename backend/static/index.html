@@ -231,6 +231,19 @@ a{color:var(--blue)}
 .activity-copy b{display:block;color:var(--text);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .activity-copy span{display:block;color:var(--muted);font-size:12.2px;line-height:1.25;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .activity-time{font-family:var(--mono);font-weight:700;font-size:11.5px;color:var(--faint)}
+.admin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:18px}
+.admin-card{background:linear-gradient(180deg,#17202B,#121821);border:1px solid var(--line);border-radius:12px;padding:13px}
+.admin-card span{display:block;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:800}
+.admin-card b{display:block;margin-top:5px;font-family:var(--mono);font-size:19px}
+.admin-card small{display:block;color:var(--faint);font-size:11.5px;margin-top:4px}
+.admin-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px;background:rgba(14,20,29,.65)}
+.admin-table{width:100%;border-collapse:collapse;min-width:760px}
+.admin-table th,.admin-table td{padding:10px;border-bottom:1px solid rgba(139,159,184,.12);font-size:12.5px;text-align:left}
+.admin-table th{color:var(--faint);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+.admin-table tr:last-child td{border-bottom:none}
+.admin-status{font-family:var(--mono);font-weight:800}
+.admin-status.bad{color:var(--loss)}
+.admin-status.good{color:var(--green)}
 .settings-panel{background:linear-gradient(180deg,#17202B,#121821);border:1px solid var(--line);border-radius:16px;padding:16px;position:sticky;top:112px}
 .settings-panel h3{font-family:var(--disp);font-size:17px;letter-spacing:-.01em;margin-bottom:4px}
 .settings-note{font-size:12.5px;color:var(--muted);margin-bottom:12px}
@@ -520,6 +533,7 @@ table.board{width:100%;border-collapse:collapse;background:linear-gradient(180de
     <button class="tab" data-v="board" onclick="go('board')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v6a5 5 0 0 1-10 0V4z"/><path d="M7 6H4.5a2.5 2.5 0 0 0 2.6 4.4M17 6h2.5a2.5 2.5 0 0 1-2.6 4.4M8.5 21h7M12 15v6"/></svg>Leaderboard</button>
     <button class="tab" data-v="playoffs" onclick="go('playoffs')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h5v5H6zM13 4h5v5h-5zM6 15h5v5H6zM13 15h5v5h-5z"/><path d="M11 6.5h2M11 17.5h2M15.5 9v6"/></svg>Playoffs</button>
     <button class="tab" data-v="profile" onclick="go('profile')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5c1.4-3.6 4.5-5.5 7.5-5.5s6.1 1.9 7.5 5.5"/></svg>Profile</button>
+    <button class="tab hide" data-v="admin" id="adminTab" onclick="go('admin')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 4v5c0 4.5-2.9 7.8-7 9-4.1-1.2-7-4.5-7-9V7l7-4z"/><path d="M9 12l2 2 4-5"/></svg>Admin</button>
   </nav>
 
   <main>
@@ -622,6 +636,11 @@ table.board{width:100%;border-collapse:collapse;background:linear-gradient(180de
       </div>
       <div class="section-h" style="font-size:19px">Badges</div>
       <div class="badges" id="badgeGrid"></div>
+    </section>
+
+    <section id="view-admin" class="hide">
+      <div class="section-h">Admin Console</div>
+      <div id="adminPanel"><div class="empty"><b>Loading admin tools</b>Checking system status.</div></div>
     </section>
   </main>
 </div>
@@ -1640,12 +1659,13 @@ function sendChat(mid){
 
 function go(v){
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.dataset.v===v));
-  ['leagues','slate','picks','board','playoffs','profile'].forEach(x=>$('#view-'+x).classList.toggle('hide', x!==v));
+  ['leagues','slate','picks','board','playoffs','profile','admin'].forEach(x=>$('#view-'+x)?.classList.toggle('hide', x!==v));
   if(v==='leagues') renderLeagues();
   if(v==='picks') renderPicks();
   if(v==='board') renderBoard();
   if(v==='playoffs') renderPlayoffs();
   if(v==='profile') renderProfile();
+  if(v==='admin') renderAdmin();
 }
 
 /* ---------- My Picks ---------- */
@@ -1725,6 +1745,11 @@ function renderProfile(){
   $('#badgeGrid').innerHTML = BADGES.map(b=>`
     <div class="badge ${L().user.badges[b.id]?'':'off'}"><div class="bico">${b.ico}</div>
     <div><div class="bname">${b.name}</div><div class="bdesc">${b.desc}</div></div></div>`).join('');
+}
+
+function renderAdmin(){
+  const panel = $('#adminPanel');
+  if(panel) panel.innerHTML = `<div class="empty"><b>Backend only</b>Admin tools appear after logging into an admin account.</div>`;
 }
 
 /* ---------- simulation ---------- */
@@ -1832,13 +1857,16 @@ function countUp(el, target){
 function closeReveal(){ $('#reveal').classList.add('hide'); refresh(); }
 
 /* ---------- ticker + live market drift ---------- */
-const TICK_VERBS = ['backed','hammered','sprinkled on','went heavy on','faded the crowd for'];
+const TICK_VERBS = ['backed','bought','hammered','sprinkled on','loaded up on','rode with','faded the crowd with','took a stand on','planted a flag on','put conviction behind','tailed the edge on','grabbed a ticket on'];
 function tickerSeed(){
   const t = $('#tickerTrack'); t.innerHTML = '';
   for(let i=0;i<14;i++) t.appendChild(tickerItem());
 }
 function tickerItem(){
   const league = L();
+  if(typeof API_MODE !== 'undefined' && API_MODE){
+    return tickerEventItem(league);
+  }
   const matchups = league?.matchups || [];
   const active = matchups.filter(x=>!x.resolved);
   if(!matchups.length){
@@ -1849,12 +1877,30 @@ function tickerItem(){
   const m = pick(active.length ? active : matchups);
   const side = Math.random()<.5?'a':'b';
   const span = document.createElement('span');
-  if(typeof API_MODE !== 'undefined' && API_MODE){
-    span.innerHTML = `<span class="t-user">${esc(league.name)}</span> has ${matchups.length} real MLB duels live - watch <span class="${side==='a'?'t-red':'t-blue'}">${esc(PLAYERS[m[side]].name)}</span>`;
-    return span;
-  }
   const f = pick(FAKES);
   span.innerHTML = `<span class="t-user">${f.name}</span> ${pick(TICK_VERBS)} <span class="${side==='a'?'t-red':'t-blue'}">${PLAYERS[m[side]].name}</span> <span class="t-amt">${Math.round(rnd(4,30))*10} pts</span>`;
+  return span;
+}
+function tickerEventItem(league){
+  const span = document.createElement('span');
+  const events = (league?.activity || []).filter(e=>e.kind === 'pick_locked');
+  if(events.length){
+    const e = pick(events);
+    const actor = e.user?.display_name || e.user?.handle || 'A manager';
+    const meta = e.metadata || {};
+    const sideName = meta.side_name || 'a player';
+    const stake = meta.stake ? `${meta.stake} pts` : 'points';
+    span.innerHTML = `<span class="t-user">${esc(actor)}</span> ${esc(pick(TICK_VERBS))} <span class="t-blue">${esc(sideName)}</span> <span class="t-amt">- ${esc(stake)}</span>`;
+    return span;
+  }
+  const matchups = league?.matchups || [];
+  if(matchups.length){
+    const m = pick(matchups);
+    const side = Math.random()<.5?'a':'b';
+    span.innerHTML = `<span class="t-user">${esc(league.name)}</span> has ${matchups.length} real MLB duels live - watch <span class="${side==='a'?'t-red':'t-blue'}">${esc(PLAYERS[m[side]]?.name || 'the slate')}</span>`;
+    return span;
+  }
+  span.textContent = 'League activity loading';
   return span;
 }
 function driftLoop(){
@@ -1969,6 +2015,7 @@ let apiUser = null;
 let apiAuthBusy = false;
 let apiUiLoopsStarted = false;
 let apiProfile = null;
+let apiAdminStatus = null;
 const leagueLoadCache = new Map();
 const LEAGUE_CACHE_MS = 20000;
 const leagueLoadInflight = new Map();
@@ -2281,6 +2328,7 @@ async function apiLoadLeague(id, force=false){
     Object.assign(l, loaded);
     l.user.bankTotal = l.settings.bankroll;
     applyBoard(l, board);
+    if($('#tickerTrack')) tickerSeed();
     const boardRows = l.boardRows || [];
     const user = {...l.user};
     leagueLoadCache.set(id, {at:Date.now(), data:{...loaded, boardRows, user}});
@@ -2294,6 +2342,7 @@ function apiEnterApp(){
   $('#landing').classList.add('hide');
   $('#app').classList.remove('hide');
   $('#logoutBtn')?.classList.remove('hide');
+  $('#adminTab')?.classList.toggle('hide', !apiUser?.is_admin);
   $('#onboard').classList.add('hide');
   window.scrollTo(0,0);
   go('leagues');
@@ -2321,6 +2370,7 @@ async function apiLogout(){
   }
   apiUser = null;
   apiProfile = null;
+  apiAdminStatus = null;
   S = {activeLeagueId:null, leagues:[], openLeagues:[], onboarded:true};
   leagueLoadCache.clear();
   leagueLoadInflight.clear();
@@ -2328,6 +2378,7 @@ async function apiLogout(){
   $('#landing').classList.remove('hide');
   closeLogout();
   $('#logoutBtn')?.classList.add('hide');
+  $('#adminTab')?.classList.add('hide');
   addAuthPanel();
   $('#authHandle').value = '';
   $('#authPassword').value = '';
@@ -2621,6 +2672,79 @@ renderProfile = function(){
   </div>`;
   $('#badgeGrid').innerHTML = `<div class="empty"><b>Backend profile is live</b>Badges are next after real stat settlement.</div>`;
 };
+
+function adminFreshnessLabel(cron){
+  if(!cron?.updated_at) return {label:'never', cls:'bad', note:'No settlement heartbeat has been recorded yet.'};
+  const ageMs = Date.now() - Date.parse(cron.updated_at);
+  const mins = Math.max(0, Math.round(ageMs / 60000));
+  return {
+    label: mins <= 10 ? 'fresh' : `${mins}m old`,
+    cls: mins <= 10 ? 'good' : 'bad',
+    note: `Last run ${new Date(cron.updated_at).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})}`
+  };
+}
+
+renderAdmin = async function(){
+  const panel = $('#adminPanel');
+  if(!panel) return;
+  if(!apiUser?.is_admin){
+    panel.innerHTML = `<div class="empty"><b>Admin access required</b>Set CHALKED_ADMIN_HANDLES to your username or email.</div>`;
+    return;
+  }
+  panel.innerHTML = `<div class="empty"><b>Loading admin console</b>Checking cron, storage, and users.</div>`;
+  try{
+    apiAdminStatus = await apiFetch('/api/admin/status');
+    const s = apiAdminStatus;
+    const cron = adminFreshnessLabel(s.cron);
+    const storageGood = s.storage?.mode === 's3';
+    panel.innerHTML = `<div class="admin-grid">
+      <div class="admin-card"><span>Settlement cron</span><b class="admin-status ${cron.cls}">${esc(cron.label)}</b><small>${esc(cron.note)}</small></div>
+      <div class="admin-card"><span>Upload storage</span><b class="admin-status ${storageGood?'good':'bad'}">${esc((s.storage?.mode || 'local').toUpperCase())}</b><small>${storageGood ? esc(s.storage.public_url || s.storage.bucket || 'R2/S3 configured') : 'Production uploads need R2/S3.'}</small></div>
+      <div class="admin-card"><span>Users</span><b>${s.counts.users}</b><small>${s.counts.blacklisted} blacklisted</small></div>
+      <div class="admin-card"><span>Open action</span><b>${s.counts.open_picks}</b><small>${s.counts.open_slates} open slates</small></div>
+    </div>
+    <div class="section-h" style="font-size:18px">Account Moderation</div>
+    <div class="admin-table-wrap"><table class="admin-table">
+      <thead><tr><th>User</th><th>Email</th><th>Status</th><th>Leagues</th><th>Picks</th><th>Reason</th><th></th></tr></thead>
+      <tbody>${(s.users || []).map(adminUserRow).join('')}</tbody>
+    </table></div>`;
+  }catch(e){
+    panel.innerHTML = `<div class="empty"><b>Admin check failed</b>${esc(e.message)}</div>`;
+  }
+};
+
+function adminUserRow(u){
+  const blacklisted = u.moderation_status === 'blacklisted';
+  return `<tr>
+    <td><b>${esc(u.display_name || u.handle)}</b><div style="color:var(--faint);font-family:var(--mono);font-size:11px">@${esc(u.handle)}${u.is_admin?' - ADMIN':''}</div></td>
+    <td>${esc(u.email || '-')}</td>
+    <td><span class="admin-status ${blacklisted?'bad':'good'}">${esc(blacklisted?'blacklisted':'active')}</span></td>
+    <td>${u.league_count}</td>
+    <td>${u.pick_count}</td>
+    <td>${esc(u.moderation_reason || '-')}</td>
+    <td>${u.is_admin ? '-' : blacklisted ? `<button class="btn ghost" onclick="clearBlacklist('${u.id}')">Clear</button>` : `<button class="btn danger" onclick="blacklistUser('${u.id}')">Blacklist</button>`}</td>
+  </tr>`;
+}
+
+async function blacklistUser(id){
+  const user = (apiAdminStatus?.users || []).find(u=>u.id === id);
+  const name = user?.display_name || user?.handle || 'this user';
+  const reason = prompt(`Blacklist ${name}? Reason:`, 'Abuse or suspicious account');
+  if(!reason) return;
+  try{
+    await apiFetch(`/api/admin/users/${id}/blacklist`, {method:'POST', body:JSON.stringify({reason})});
+    toast('Account blacklisted');
+    renderAdmin();
+  }catch(e){ toast(e.message); }
+}
+
+async function clearBlacklist(id){
+  try{
+    await apiFetch(`/api/admin/users/${id}/blacklist`, {method:'DELETE'});
+    toast('Blacklist cleared');
+    renderAdmin();
+  }catch(e){ toast(e.message); }
+}
 
 async function saveProfile(){
   try{

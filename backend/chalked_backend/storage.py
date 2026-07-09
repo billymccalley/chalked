@@ -21,11 +21,34 @@ def s3_upload_configured() -> bool:
     )
 
 
+def production_uploads_require_object_storage() -> bool:
+    explicit = os.environ.get("CHALKED_REQUIRE_OBJECT_STORAGE")
+    if explicit is not None:
+        return explicit.strip().lower() in {"1", "true", "yes", "on"}
+    return os.environ.get("CHALKED_ENV", "").strip().lower() in {"prod", "production"}
+
+
+def upload_storage_status() -> dict:
+    configured = s3_upload_configured()
+    required = production_uploads_require_object_storage()
+    return {
+        "configured": configured,
+        "required": required,
+        "mode": "s3" if configured else "local",
+        "local_allowed": configured or not required,
+        "bucket": os.environ.get("CHALKED_UPLOAD_BUCKET") if configured else None,
+        "public_url": os.environ.get("CHALKED_UPLOAD_PUBLIC_URL", "").rstrip("/") or None,
+        "prefix": os.environ.get("CHALKED_UPLOAD_PREFIX", "uploads").strip("/") or "uploads",
+    }
+
+
 def upload_image(raw: bytes, mime: str, ext: str, upload_root: Path) -> dict:
     filename = f"{new_id('img')}{ext}"
     if s3_upload_configured():
         key = f"{os.environ.get('CHALKED_UPLOAD_PREFIX', 'uploads/').strip('/')}/{filename}"
         return upload_s3_compatible(raw, mime, key)
+    if production_uploads_require_object_storage():
+        raise RuntimeError("Object storage is required for production uploads")
     upload_root.mkdir(parents=True, exist_ok=True)
     target = (upload_root / filename).resolve()
     if not str(target).startswith(str(upload_root.resolve())):

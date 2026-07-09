@@ -23,6 +23,10 @@ services:
         value: https://chalked-srnz.onrender.com
       - key: CHALKED_CRON_SECRET
         generateValue: true
+      - key: CHALKED_ADMIN_HANDLES
+        sync: false
+      - key: CHALKED_REQUIRE_OBJECT_STORAGE
+        value: 1
       - key: CHALKED_MAIL_FROM
         sync: false
       - key: CHALKED_SMTP_HOST
