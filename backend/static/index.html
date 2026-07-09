@@ -352,6 +352,10 @@ a{color:var(--blue)}
 
 /* per-matchup chat */
 .mc-chat{margin-top:12px;border-top:1px dashed var(--line);padding-top:12px;animation:fadeIn .25s ease}
+.chat-btn{position:relative}
+.chat-btn.has-chat{border-color:rgba(255,197,61,.38);color:var(--gold)}
+.chat-btn.has-chat::after{content:"";position:absolute;right:-5px;top:-5px;width:8px;height:8px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 4px rgba(255,197,61,.12),0 0 12px rgba(255,197,61,.45)}
+.chat-btn.unread::after{animation:pulse 1.1s ease-in-out infinite}
 .chat-msgs{max-height:170px;overflow-y:auto;display:flex;flex-direction:column;gap:7px;padding-right:4px}
 .msg{font-size:13px;line-height:1.4}
 .msg .mname{font-weight:700;margin-right:6px}
@@ -736,6 +740,44 @@ const DB = (() => {
     wipe(){ if(ok){ try{ localStorage.removeItem('chalked_v1'); }catch(e){} } mem = null; }
   };
 })();
+
+const CHAT_STORE_KEY = 'chalked_matchup_chat_v1';
+let CHAT_STORE = loadChatStore();
+function loadChatStore(){
+  try{ return JSON.parse(localStorage.getItem(CHAT_STORE_KEY) || '{}') || {}; }catch(e){ return {}; }
+}
+function saveChatStore(){
+  try{ localStorage.setItem(CHAT_STORE_KEY, JSON.stringify(CHAT_STORE)); }catch(e){}
+}
+function chatKey(leagueId, slateId, matchupId){
+  return [leagueId || 'demo', slateId || 'slate', matchupId].join(':');
+}
+function hydrateMatchupChat(leagueId, slateId, matchup){
+  const key = chatKey(leagueId, slateId, matchup.id);
+  const stored = CHAT_STORE[key];
+  if(stored){
+    matchup.chat = stored.messages || [];
+    matchup.chatSeen = stored.seen || 0;
+  }else{
+    matchup.chat = matchup.chat || [];
+    matchup.chatSeen = matchup.chat.length;
+    CHAT_STORE[key] = {messages:matchup.chat, seen:matchup.chatSeen};
+    saveChatStore();
+  }
+}
+function persistMatchupChat(matchup){
+  const l = L();
+  if(!l || !matchup) return;
+  CHAT_STORE[chatKey(l.id, l.selectedSlateId || l.week, matchup.id)] = {messages:matchup.chat || [], seen:matchup.chatSeen || 0};
+  saveChatStore();
+}
+function cleanupChatStore(){
+  const keep = new Set();
+  (S?.leagues || []).forEach(l => (l.slates || [{id:l.selectedSlateId || l.week, matchups:l.matchups || []}]).forEach(s => (s.matchups || []).forEach(m => keep.add(chatKey(l.id, s.id, m.id)))));
+  let changed = false;
+  Object.keys(CHAT_STORE).forEach(key => { if(!keep.has(key)){ delete CHAT_STORE[key]; changed = true; } });
+  if(changed) saveChatStore();
+}
 
 const $ = s => document.querySelector(s);
 const fmt = n => (n>=0?'+':'') + Math.round(n).toLocaleString();
@@ -1248,6 +1290,7 @@ async function confirmDeleteLeague(){
     } else {
       S.leagues = S.leagues.filter(l=>l.id!==id);
       S.activeLeagueId = S.leagues[0]?.id;
+      cleanupChatStore();
       DB.save(S);
       closeDeleteLeague();
       refresh();
@@ -1281,6 +1324,7 @@ async function confirmLeaveLeague(){
     } else {
       S.leagues = S.leagues.filter(l=>l.id!==id);
       if(S.activeLeagueId === id) S.activeLeagueId = S.leagues[0]?.id;
+      cleanupChatStore();
       DB.save(S);
       closeLeaveLeague();
       refresh();
@@ -1309,6 +1353,7 @@ async function confirmRefreshSlate(){
       l.picks = [];
       l.matchups = genWeek(l.week, l.settings.matchups);
       l.fakePicks = genFakePicks(l.matchups, l.settings);
+      cleanupChatStore();
       DB.save(S);
       closeRefreshSlate();
     }
@@ -1385,6 +1430,7 @@ function renderSlate(){
   if(chip) chip.textContent = l.phase==='open' ? 'Real MLB player pool' : 'Slate settled';
   const refreshBtn = $('#refreshSlateBtn');
   if(refreshBtn) refreshBtn.classList.toggle('hide', !isOwner(l) || l.phase !== 'open');
+  l.matchups.forEach(m => hydrateMatchupChat(l.id, l.selectedSlateId || l.week, m));
   if(l.slates?.length > 1){
     const tabs = document.createElement('div');
     tabs.className = 'alias-card';
@@ -1471,6 +1517,22 @@ function lockCountdownText(m){
   const h = Math.floor(ms/3.6e6), mn = Math.floor(ms%3.6e6/6e4), sc = Math.floor(ms%6e4/1000);
   return `Locks in ${h}h ${String(mn).padStart(2,'0')}m ${String(sc).padStart(2,'0')}s`;
 }
+function chatButtonHTML(m){
+  const count = (m.chat || []).length;
+  const unread = Math.max(0, count - (m.chatSeen || 0));
+  const cls = `detail-btn chat-btn ${count?'has-chat':''} ${unread?'unread':''}`;
+  const label = count ? `Chat ${count}${unread ? ` new` : ''}` : 'Chat';
+  return `<button class="${cls}" data-chatbtn onclick="toggleChat('${m.id}')" title="${unread ? `${unread} unread message${unread===1?'':'s'}` : count ? `${count} chat message${count===1?'':'s'}` : 'Open matchup chat'}">${label}</button>`;
+}
+function updateChatButton(el, m){
+  const btn = el?.querySelector('[data-chatbtn]');
+  if(!btn || !m) return;
+  const count = (m.chat || []).length;
+  const unread = Math.max(0, count - (m.chatSeen || 0));
+  btn.className = `detail-btn chat-btn ${count?'has-chat':''} ${unread?'unread':''}`;
+  btn.textContent = count ? `Chat ${count}${unread ? ' new' : ''}` : 'Chat';
+  btn.title = unread ? `${unread} unread message${unread===1?'':'s'}` : count ? `${count} chat message${count===1?'':'s'}` : 'Open matchup chat';
+}
 
 function card(m){
   const A = PLAYERS[m.a], B = PLAYERS[m.b];
@@ -1489,7 +1551,7 @@ function card(m){
       <span class="stat-chip"><span class="emoji">&#9918;</span> ${(m.statCategory || '').replace('This Week','Game')}</span>
       <span style="display:flex;gap:12px">
         <button class="detail-btn" onclick="toggleDetail('${m.id}')">details</button>
-        <button class="detail-btn" data-chatbtn onclick="toggleChat('${m.id}')">Chat ${m.chat.length}</button>
+        ${chatButtonHTML(m)}
       </span>
     </div>
     <div class="game-line">${m.game?.is_live?'<span class="live-dot"></span>':''}<span>${gameStatusText(m)}</span><span class="chip" data-lock-count="${m.id}">${lockCountdownText(m)}</span></div>
@@ -1655,7 +1717,9 @@ function renderChatArea(el, m){
   const msgs = m.chat.map(c => {
     const isMe = c.who === 'me';
     const f = isMe ? null : FAKES.find(x => x.id === c.who);
-    return `<div class="msg"><span class="mname" style="color:${isMe ? 'var(--gold)' : f.col}">${isMe ? 'You' : f.name}</span>${esc(c.txt)}</div>`;
+    const name = isMe ? 'You' : (f?.name || c.name || 'League');
+    const color = isMe ? 'var(--gold)' : (f?.col || 'var(--blue)');
+    return `<div class="msg"><span class="mname" style="color:${color}">${esc(name)}</span>${esc(c.txt)}</div>`;
   }).join('');
   box.innerHTML = `<div class="chat-msgs">${msgs || '<div class="msg" style="color:var(--faint)">No talk yet. Start it.</div>'}</div>
     <div class="chat-in"><input maxlength="140" placeholder="Talk your talk..." onkeydown="if(event.key==='Enter')sendChat('${m.id}')">
@@ -1668,7 +1732,14 @@ function toggleChat(mid){
   const el = document.querySelector(`[data-mid="${mid}"]`);
   const m = L().matchups.find(x => x.id === mid);
   renderChatArea(el, m);
-  el.querySelector('[data-chat]').classList.toggle('hide');
+  const chat = el.querySelector('[data-chat]');
+  const opening = chat.classList.contains('hide');
+  chat.classList.toggle('hide');
+  if(opening){
+    m.chatSeen = (m.chat || []).length;
+    persistMatchupChat(m);
+    updateChatButton(el, m);
+  }
 }
 
 function sendChat(mid){
@@ -1678,10 +1749,12 @@ function sendChat(mid){
   const txt = (input.value || '').trim();
   if(!txt) return;
   m.chat.push({who:'me', txt});
+  m.chatSeen = m.chat.length;
+  persistMatchupChat(m);
   DB.save(S);
   input.value = '';
   renderChatArea(el, m);
-  el.querySelector('[data-chatbtn]').textContent = `Chat ${m.chat.length}`;
+  updateChatButton(el, m);
 }
 
 function go(v){
@@ -1957,10 +2030,16 @@ function driftLoop(){
     Math.random()<.5 ? m.pubA += d : m.pubB += d;
     if(Math.random() < 0.3){
       m.chat.push(chatLine(m));
+      persistMatchupChat(m);
       const cEl = document.querySelector(`[data-mid="${m.id}"]`);
       if(cEl){
-        cEl.querySelector('[data-chatbtn]').textContent = `Chat ${m.chat.length}`;
-        if(!cEl.querySelector('[data-chat]').classList.contains('hide')) renderChatArea(cEl, m);
+        const chatOpen = !cEl.querySelector('[data-chat]').classList.contains('hide');
+        if(chatOpen){
+          m.chatSeen = m.chat.length;
+          persistMatchupChat(m);
+        }
+        updateChatButton(cEl, m);
+        if(chatOpen) renderChatArea(cEl, m);
       }
     }
     DB.save(S);
@@ -2041,7 +2120,7 @@ function enterApp(){
   window.scrollTo(0,0);
   if(!S.onboarded) showOnboard();
 }
-function resetDemo(){ DB.wipe(); seed(); refresh(); tickerSeed(); toast('Demo reset - fresh Week 1 slate'); }
+function resetDemo(){ DB.wipe(); CHAT_STORE = {}; saveChatStore(); seed(); refresh(); tickerSeed(); toast('Demo reset - fresh Week 1 slate'); }
 
 /* ---------- boot ---------- */
 (function boot(){
@@ -2327,6 +2406,7 @@ function applySlateView(l, slate){
   l.lockTime = slate.lockTime;
   l.matchups = slate.matchups;
   l.picks = slate.picks;
+  l.matchups.forEach(m => hydrateMatchupChat(l.id, l.selectedSlateId || l.week, m));
 }
 
 function applyBoard(l, board){
@@ -2364,6 +2444,7 @@ async function apiLoad(){
   }
   if(!S.activeLeagueId || !S.leagues.some(l=>l.id===S.activeLeagueId)) S.activeLeagueId = S.leagues[0]?.id;
   if(S.activeLeagueId) await apiLoadLeague(S.activeLeagueId, true);
+  cleanupChatStore();
   refresh();
 }
 
@@ -2375,6 +2456,7 @@ async function apiLoadLeague(id, force=false){
   const cached = leagueLoadCache.get(id);
   if(!force && cached && Date.now() - cached.at < LEAGUE_CACHE_MS){
     Object.assign(l, cached.data);
+    l.matchups.forEach(m => hydrateMatchupChat(l.id, l.selectedSlateId || l.week, m));
     return;
   }
   if(leagueLoadInflight.has(id)){
@@ -2405,8 +2487,10 @@ async function apiLoadLeague(id, force=false){
       activity: activity.events || []
     };
     Object.assign(l, loaded);
+    applySlateView(l, selected);
     l.user.bankTotal = l.settings.bankroll;
     applyBoard(l, board);
+    cleanupChatStore();
     if($('#tickerTrack')) tickerSeed();
     const boardRows = l.boardRows || [];
     const user = {...l.user};
