@@ -359,6 +359,7 @@ a{color:var(--blue)}
 .chat-msgs{max-height:170px;overflow-y:auto;display:flex;flex-direction:column;gap:7px;padding-right:4px}
 .msg{font-size:13px;line-height:1.4}
 .msg .mname{font-weight:700;margin-right:6px}
+.msg .mtime{font-size:10.5px;color:var(--faint);font-family:var(--mono);margin-left:6px}
 .chat-in{display:flex;gap:8px;margin-top:10px}
 .chat-in input{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:8px 12px;border-radius:9px;font-size:13px}
 .chat-in input:focus{outline:1px solid var(--gold)}
@@ -753,6 +754,11 @@ function chatKey(leagueId, slateId, matchupId){
   return [leagueId || 'demo', slateId || 'slate', matchupId].join(':');
 }
 function hydrateMatchupChat(leagueId, slateId, matchup){
+  if(matchup.chatBackend){
+    matchup.chat = matchup.chat || [];
+    matchup.chatSeen = matchup.chatSeen || matchup.chat.length;
+    return;
+  }
   const key = chatKey(leagueId, slateId, matchup.id);
   const stored = CHAT_STORE[key];
   if(stored){
@@ -768,6 +774,7 @@ function hydrateMatchupChat(leagueId, slateId, matchup){
 function persistMatchupChat(matchup){
   const l = L();
   if(!l || !matchup) return;
+  if(matchup.chatBackend) return;
   CHAT_STORE[chatKey(l.id, l.selectedSlateId || l.week, matchup.id)] = {messages:matchup.chat || [], seen:matchup.chatSeen || 0};
   saveChatStore();
 }
@@ -1714,12 +1721,13 @@ function renderChatArea(el, m){
   const box = el.querySelector('[data-chat]');
   const prev = box.querySelector('.chat-in input');
   const keep = prev ? prev.value : '';
-  const msgs = m.chat.map(c => {
-    const isMe = c.who === 'me';
+  const msgs = (m.chat || []).map(c => {
+    const isMe = (c.user_id && apiUser?.id && c.user_id === apiUser.id) || c.who === 'me';
     const f = isMe ? null : FAKES.find(x => x.id === c.who);
     const name = isMe ? 'You' : (f?.name || c.name || 'League');
     const color = isMe ? 'var(--gold)' : (f?.col || 'var(--blue)');
-    return `<div class="msg"><span class="mname" style="color:${color}">${esc(name)}</span>${esc(c.txt)}</div>`;
+    const time = c.created_at ? `<span class="mtime">${shortTime(c.created_at)}</span>` : '';
+    return `<div class="msg"><span class="mname" style="color:${color}">${esc(name)}</span>${esc(c.txt || '')}${time}</div>`;
   }).join('');
   box.innerHTML = `<div class="chat-msgs">${msgs || '<div class="msg" style="color:var(--faint)">No talk yet. Start it.</div>'}</div>
     <div class="chat-in"><input maxlength="140" placeholder="Talk your talk..." onkeydown="if(event.key==='Enter')sendChat('${m.id}')">
@@ -1742,12 +1750,30 @@ function toggleChat(mid){
   }
 }
 
-function sendChat(mid){
+async function sendChat(mid){
   const el = document.querySelector(`[data-mid="${mid}"]`);
   const m = L().matchups.find(x => x.id === mid);
   const input = el.querySelector('[data-chat] .chat-in input');
   const txt = (input.value || '').trim();
   if(!txt) return;
+  if(API_MODE && m.chatBackend){
+    input.disabled = true;
+    try{
+      const data = await apiFetch(`/api/leagues/${encodeURIComponent(L().id)}/matchups/${encodeURIComponent(mid)}/chat`, {
+        method:'POST',
+        body:JSON.stringify({message:txt})
+      });
+      m.chat.push(mapChatMessage(data.message));
+      m.chatSeen = m.chat.length;
+      input.value = '';
+      renderChatArea(el, m);
+      updateChatButton(el, m);
+    }catch(e){
+      toast(e.message || 'Could not send chat');
+      input.disabled = false;
+    }
+    return;
+  }
   m.chat.push({who:'me', txt});
   m.chatSeen = m.chat.length;
   persistMatchupChat(m);
@@ -2028,7 +2054,7 @@ function driftLoop(){
     const m = pick(league.matchups);
     const d = Math.round(rnd(Math.max(10, league.settings.drift*.35), league.settings.drift*1.7));
     Math.random()<.5 ? m.pubA += d : m.pubB += d;
-    if(Math.random() < 0.3){
+    if(!m.chatBackend && Math.random() < 0.3){
       m.chat.push(chatLine(m));
       persistMatchupChat(m);
       const cEl = document.querySelector(`[data-mid="${m.id}"]`);
@@ -2357,6 +2383,19 @@ function mapLeague(l){
   };
 }
 
+function mapChatMessage(c){
+  const user = c?.user || {};
+  return {
+    id:c?.id || `local-${Math.random().toString(16).slice(2)}`,
+    user_id:c?.user_id || user.id || null,
+    name:user.display_name || user.handle || c?.name || 'League',
+    avatar_url:user.avatar_url || c?.avatar_url || null,
+    txt:c?.message || c?.txt || '',
+    created_at:c?.created_at || c?.at || null,
+    who:c?.who || null
+  };
+}
+
 function mapApiMatchup(m){
   ['a','b'].forEach(side=>{
     const p = m.players[side];
@@ -2376,7 +2415,9 @@ function mapApiMatchup(m){
     playerInfo:{a:m.players.a, b:m.players.b},
     liveStats:m.live_stats || {a:0,b:0},
     audit:m.audit || {},
-    chat:[]
+    chat:(m.chat || []).map(mapChatMessage),
+    chatSeen:(m.chat || []).length,
+    chatBackend:true
   };
 }
 

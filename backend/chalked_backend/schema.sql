@@ -171,6 +171,16 @@ CREATE TABLE IF NOT EXISTS picks (
   UNIQUE (user_id, matchup_id)
 );
 
+CREATE TABLE IF NOT EXISTS matchup_chat_messages (
+  id TEXT PRIMARY KEY,
+  league_id TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+  slate_id TEXT NOT NULL REFERENCES slates(id) ON DELETE CASCADE,
+  matchup_id TEXT NOT NULL REFERENCES matchups(id) ON DELETE CASCADE,
+  user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+  message TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS standings (
   league_id TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -244,6 +254,8 @@ CREATE TABLE IF NOT EXISTS feedback_reports (
   status TEXT NOT NULL DEFAULT 'open',
   created_at TEXT NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_matchup_chat ON matchup_chat_messages(matchup_id, created_at);
 
 CREATE INDEX IF NOT EXISTS idx_picks_league_user ON picks(league_id, user_id);
 CREATE INDEX IF NOT EXISTS idx_matchups_slate ON matchups(slate_id);

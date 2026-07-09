@@ -181,6 +181,19 @@ def migrate(conn: sqlite3.Connection) -> None:
     )
     conn.execute(
         """
+        CREATE TABLE IF NOT EXISTS matchup_chat_messages (
+          id TEXT PRIMARY KEY,
+          league_id TEXT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+          slate_id TEXT NOT NULL REFERENCES slates(id) ON DELETE CASCADE,
+          matchup_id TEXT NOT NULL REFERENCES matchups(id) ON DELETE CASCADE,
+          user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+          message TEXT NOT NULL,
+          created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS system_status (
           key TEXT PRIMARY KEY,
           value TEXT NOT NULL,
@@ -227,6 +240,7 @@ def migrate(conn: sqlite3.Connection) -> None:
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_playoffs_league ON playoff_matchups(league_id, round_no, matchup_no)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_activity_league ON activity_events(league_id, created_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_matchup_chat ON matchup_chat_messages(matchup_id, created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_email_tokens_hash ON email_tokens(token_hash)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_user_moderation_status ON user_moderation(status)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_feedback_status ON feedback_reports(status, created_at)")

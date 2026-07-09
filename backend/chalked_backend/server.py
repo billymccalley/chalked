@@ -26,6 +26,7 @@ from .services import (
     activity_feed,
     check_rate_limit,
     create_league,
+    create_matchup_chat,
     create_pick,
     create_feedback_report,
     create_user,
@@ -39,6 +40,7 @@ from .services import (
     leaderboard,
     list_leagues,
     login,
+    matchup_chat,
     playoff_picture,
     profile,
     public_user,
@@ -565,6 +567,20 @@ def activity_route(req: RequestHandler, params: dict[str, str]) -> dict:
         return activity_feed(conn, user["id"], params["league_id"])
 
 
+def matchup_chat_route(req: RequestHandler, params: dict[str, str]) -> dict:
+    user = req.current_user()
+    with transaction() as conn:
+        ensure_seeded(conn)
+        return matchup_chat(conn, user["id"], params["league_id"], params["matchup_id"])
+
+
+def create_matchup_chat_route(req: RequestHandler, params: dict[str, str]) -> dict:
+    user = req.current_user()
+    with transaction() as conn:
+        ensure_seeded(conn)
+        return {"message": create_matchup_chat(conn, user["id"], params["league_id"], params["matchup_id"], req.read_json())}
+
+
 def admin_status_route(req: RequestHandler, _: dict[str, str]) -> dict:
     user = req.current_user()
     with transaction() as conn:
@@ -630,6 +646,8 @@ ROUTES: list[tuple[str, str, RouteHandler]] = [
     ("GET", r"/api/leagues/(?P<league_id>[^/]+)/leaderboard", leaderboard_route),
     ("GET", r"/api/leagues/(?P<league_id>[^/]+)/playoffs", playoff_route),
     ("GET", r"/api/leagues/(?P<league_id>[^/]+)/activity", activity_route),
+    ("GET", r"/api/leagues/(?P<league_id>[^/]+)/matchups/(?P<matchup_id>[^/]+)/chat", matchup_chat_route),
+    ("POST", r"/api/leagues/(?P<league_id>[^/]+)/matchups/(?P<matchup_id>[^/]+)/chat", create_matchup_chat_route),
 ]
 
 

@@ -18,6 +18,7 @@ from backend.chalked_backend.services import (
     confirm_password_reset,
     create_feedback_report,
     create_league,
+    create_matchup_chat,
     create_pick,
     create_user,
     ensure_active_slate,
@@ -26,6 +27,7 @@ from backend.chalked_backend.services import (
     leave_league,
     leaderboard,
     login,
+    matchup_chat,
     player_stat_value,
     request_email_verification,
     request_password_reset,
@@ -272,6 +274,25 @@ class ServiceTests(unittest.TestCase):
             self.assertIn("league_created", kinds)
             self.assertIn("member_joined", kinds)
             self.assertIn("pick_locked", kinds)
+
+    def test_matchup_chat_remembers_authors_across_accounts(self):
+        with transaction(self.db_path) as conn:
+            ensure_seeded(conn)
+            owner = create_user(conn, {"handle": "chatowner", "password": "secret123"})
+            guest = create_user(conn, {"handle": "chatguest", "password": "secret123"})
+            league = create_league(conn, owner["id"], {"name": "Chat League", "code": "CHATME"})
+            join_league(conn, guest["id"], league["id"])
+            slate = ensure_active_slate(conn, league["id"])
+            matchup_id = slate["matchups"][0]["id"]
+
+            create_matchup_chat(conn, owner["id"], league["id"], matchup_id, {"message": "I am on this side"})
+            create_matchup_chat(conn, guest["id"], league["id"], matchup_id, {"message": "Noted"})
+
+            data = matchup_chat(conn, guest["id"], league["id"], matchup_id)
+            self.assertEqual([m["message"] for m in data["messages"]], ["I am on this side", "Noted"])
+            self.assertEqual(data["messages"][0]["user"]["handle"], "chatowner")
+            self.assertEqual(data["messages"][1]["user"]["handle"], "chatguest")
+            self.assertEqual(data["messages"][1]["user_id"], guest["id"])
 
     def test_admin_can_blacklist_and_clear_accounts(self):
         old_admins = os.environ.get("CHALKED_ADMIN_HANDLES")

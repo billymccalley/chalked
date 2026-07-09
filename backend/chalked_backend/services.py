@@ -456,6 +456,97 @@ def activity_feed(conn: sqlite3.Connection, user_id: str, league_id: str, limit:
     }
 
 
+def _require_matchup_in_league(conn: sqlite3.Connection, league_id: str, matchup_id: str) -> sqlite3.Row:
+    row = conn.execute(
+        """
+        SELECT m.id, m.slate_id
+        FROM matchups m
+        JOIN slates s ON s.id = m.slate_id
+        WHERE m.id = ? AND s.league_id = ?
+        """,
+        (matchup_id, league_id),
+    ).fetchone()
+    if not row:
+        raise ApiError(404, "Matchup not found")
+    return row
+
+
+def chat_message_dict(row: sqlite3.Row) -> dict:
+    return {
+        "id": row["id"],
+        "league_id": row["league_id"],
+        "slate_id": row["slate_id"],
+        "matchup_id": row["matchup_id"],
+        "user_id": row["user_id"],
+        "message": row["message"],
+        "created_at": row["created_at"],
+        "user": {
+            "id": row["user_id"],
+            "handle": row["handle"],
+            "display_name": row["display_name"] or row["handle"] or "Deleted user",
+            "avatar_url": row["avatar_url"],
+        } if row["user_id"] else None,
+    }
+
+
+def matchup_chat_messages(conn: sqlite3.Connection, matchup_id: str, limit: int = 60) -> list[dict]:
+    rows = conn.execute(
+        """
+        SELECT c.*,
+               u.handle,
+               COALESCE(mem.display_name, u.display_name, u.handle) AS display_name,
+               COALESCE(mem.avatar_url, u.avatar_url) AS avatar_url
+        FROM matchup_chat_messages c
+        LEFT JOIN users u ON u.id = c.user_id
+        LEFT JOIN memberships mem ON mem.league_id = c.league_id AND mem.user_id = c.user_id
+        WHERE c.matchup_id = ?
+        ORDER BY c.created_at ASC
+        LIMIT ?
+        """,
+        (matchup_id, max(1, min(int(limit), 100))),
+    ).fetchall()
+    return [chat_message_dict(row) for row in rows]
+
+
+def matchup_chat(conn: sqlite3.Connection, user_id: str, league_id: str, matchup_id: str, limit: int = 60) -> dict:
+    require_member(conn, user_id, league_id)
+    _require_matchup_in_league(conn, league_id, matchup_id)
+    return {"messages": matchup_chat_messages(conn, matchup_id, limit)}
+
+
+def create_matchup_chat(conn: sqlite3.Connection, user_id: str, league_id: str, matchup_id: str, data: dict) -> dict:
+    require_member(conn, user_id, league_id)
+    matchup = _require_matchup_in_league(conn, league_id, matchup_id)
+    message = re.sub(r"\s+", " ", str(data.get("message") or data.get("txt") or "")).strip()
+    if not message:
+        raise ApiError(400, "Message cannot be empty")
+    if len(message) > 280:
+        raise ApiError(400, "Message must be 280 characters or less")
+    message_id = new_id("chat")
+    created_at = now_iso()
+    conn.execute(
+        """
+        INSERT INTO matchup_chat_messages (id, league_id, slate_id, matchup_id, user_id, message, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (message_id, league_id, matchup["slate_id"], matchup_id, user_id, message, created_at),
+    )
+    row = conn.execute(
+        """
+        SELECT c.*,
+               u.handle,
+               COALESCE(mem.display_name, u.display_name, u.handle) AS display_name,
+               COALESCE(mem.avatar_url, u.avatar_url) AS avatar_url
+        FROM matchup_chat_messages c
+        LEFT JOIN users u ON u.id = c.user_id
+        LEFT JOIN memberships mem ON mem.league_id = c.league_id AND mem.user_id = c.user_id
+        WHERE c.id = ?
+        """,
+        (message_id,),
+    ).fetchone()
+    return chat_message_dict(row)
+
+
 def record_system_status(conn: sqlite3.Connection, key: str, value: dict) -> dict:
     stamp = now_iso()
     payload = json.dumps(value, sort_keys=True)
@@ -1728,6 +1819,7 @@ def matchup_dict(conn: sqlite3.Connection, m: sqlite3.Row) -> dict:
         "actual_a": m["actual_a"],
         "actual_b": m["actual_b"],
         "margin_bonus_hit": bool(m["margin_bonus_hit"]),
+        "chat": matchup_chat_messages(conn, m["id"]),
     }
 
 
