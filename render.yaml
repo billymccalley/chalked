@@ -1,8 +1,8 @@
 services:
   - type: web
-    name: chalked-web
+    name: chalked
     runtime: python
-    plan: starter
+    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: python -m backend.chalked_backend.server
     healthCheckPath: /api/health
@@ -12,11 +12,11 @@ services:
       - key: CHALKED_HOST
         value: 0.0.0.0
       - key: CHALKED_DB
-        value: /data/chalked.sqlite3
+        value: /tmp/chalked.sqlite3
       - key: CHALKED_PUBLIC_URL
-        sync: false
+        value: https://chalked.onrender.com
       - key: CHALKED_ALLOWED_ORIGINS
-        sync: false
+        value: https://chalked.onrender.com
       - key: CHALKED_CRON_SECRET
         generateValue: true
       - key: CHALKED_MAIL_FROM
@@ -31,19 +31,3 @@ services:
         sync: false
       - key: CHALKED_SMTP_TLS
         value: 1
-    disk:
-      name: chalked-data
-      mountPath: /data
-      sizeGB: 1
-
-  - type: cron
-    name: chalked-settlement
-    runtime: python
-    schedule: "*/5 * * * *"
-    buildCommand: pip install -r requirements.txt
-    startCommand: python -m backend.chalked_backend.jobs settle
-    envVars:
-      - key: CHALKED_PUBLIC_URL
-        sync: false
-      - key: CHALKED_CRON_SECRET
-        sync: false

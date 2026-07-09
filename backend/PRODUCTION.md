@@ -5,6 +5,7 @@ This is the private-beta path for turning the local app into a real hosted site.
 ## Recommended beta stack
 
 - App host: Render Web Service, Railway, Fly.io, or a small VPS/container host
+- First smoke test: free Render web service with temporary SQLite
 - Database for private beta: SQLite on a persistent disk
 - Database for public launch: managed Postgres
 - DNS: Cloudflare DNS
@@ -13,11 +14,14 @@ This is the private-beta path for turning the local app into a real hosted site.
 
 ## Render-style deploy
 
-The repo includes a starter `render.yaml` with:
+The repo includes a starter `render.yaml` for a free smoke test with:
 
-- `chalked-web`: the web service
-- `chalked-settlement`: a cron job that calls `/api/system/settle`
-- a 1 GB persistent disk mounted at `/data` for private-beta SQLite
+- `chalked`: the web service
+- `plan: free`
+- `CHALKED_PUBLIC_URL=https://chalked.onrender.com`
+- temporary SQLite at `/tmp/chalked.sqlite3`
+
+If Render says the `chalked` service URL is unavailable or assigns a different URL, update `CHALKED_PUBLIC_URL` and `CHALKED_ALLOWED_ORIGINS` to the actual `.onrender.com` URL shown in the Render dashboard.
 
 Build command:
 
@@ -33,15 +37,21 @@ python -m backend.chalked_backend.server
 
 The server reads `PORT` automatically, so hosts that inject a dynamic port work without code changes. Locally it still defaults to `127.0.0.1:8080`.
 
-After creating services from the blueprint, fill in all `sync: false` values in the Render dashboard.
+After the smoke test works, upgrade to the paid private-beta setup:
+
+- set the web service plan to `starter`
+- add a persistent disk mounted at `/data`
+- set `CHALKED_DB=/data/chalked.sqlite3`
+- add a cron job that runs `python -m backend.chalked_backend.jobs settle`
+- set `CHALKED_PUBLIC_URL` and `CHALKED_CRON_SECRET` on the cron job
 
 ## Required environment
 
 ```text
 CHALKED_ENV=production
 CHALKED_HOST=0.0.0.0
-CHALKED_PUBLIC_URL=https://your-domain.com
-CHALKED_ALLOWED_ORIGINS=https://your-domain.com,https://www.your-domain.com
+CHALKED_PUBLIC_URL=https://chalked.gg
+CHALKED_ALLOWED_ORIGINS=https://chalked.gg,https://www.chalked.gg
 CHALKED_DB=/data/chalked.sqlite3
 CHALKED_CRON_SECRET=generate-a-long-random-secret
 CHALKED_MAIL_FROM=Chalked <noreply@your-domain.com>
@@ -87,11 +97,17 @@ The endpoint checks open slates, syncs MLB live-feed stats, and settles final ma
 ## Domain setup
 
 1. Deploy the app and confirm the host URL works.
-2. Add your custom domain in the hosting dashboard.
-3. Add the DNS records requested by the host in Cloudflare.
-4. Verify the domain in the host dashboard.
-5. Confirm HTTPS works.
-6. Set `CHALKED_PUBLIC_URL` and `CHALKED_ALLOWED_ORIGINS` to the real domain.
+2. Buy or connect `chalked.gg`.
+3. Add `chalked.gg` and `www.chalked.gg` as custom domains in the hosting dashboard.
+4. Add the DNS records requested by the host in Cloudflare.
+5. Verify the domain in the host dashboard.
+6. Confirm HTTPS works.
+7. Set:
+
+```text
+CHALKED_PUBLIC_URL=https://chalked.gg
+CHALKED_ALLOWED_ORIGINS=https://chalked.gg,https://www.chalked.gg
+```
 
 ## Before public launch
 
