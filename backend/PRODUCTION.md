@@ -15,12 +15,13 @@ This is the private-beta path for turning the local app into a real hosted site.
 
 ## Render-style deploy
 
-The repo includes a starter `render.yaml` for a free smoke test with:
+The repo includes a `render.yaml` for a private-beta deploy with:
 
 - `chalked`: the web service
-- `plan: free`
+- `plan: starter`
+- a persistent disk mounted at `/data`
 - `CHALKED_PUBLIC_URL=https://chalked.onrender.com`
-- temporary SQLite at `/tmp/chalked.sqlite3`
+- persistent SQLite at `/data/chalked.sqlite3`
 
 If Render says the `chalked` service URL is unavailable or assigns a different URL, update `CHALKED_PUBLIC_URL` and `CHALKED_ALLOWED_ORIGINS` to the actual `.onrender.com` URL shown in the Render dashboard.
 
@@ -38,10 +39,11 @@ python -m backend.chalked_backend.server
 
 The server reads `PORT` automatically, so hosts that inject a dynamic port work without code changes. Locally it still defaults to `127.0.0.1:8080`.
 
-After the smoke test works, upgrade to the paid private-beta setup:
+The persistent disk setup requires a paid Render web service. If the blueprint does not attach the disk automatically, add it from the Render dashboard:
 
-- set the web service plan to `starter`
-- add a persistent disk mounted at `/data`
+- set the web service plan to `starter` or another paid plan
+- add a persistent disk named `chalked-data`
+- mount it at `/data`
 - set `CHALKED_DB=/data/chalked.sqlite3`
 - add a cron job that runs `python -m backend.chalked_backend.jobs settle`
 - set `CHALKED_PUBLIC_URL` and `CHALKED_CRON_SECRET` on the cron job
@@ -90,7 +92,14 @@ For the private beta, mount a persistent disk at `/data` and set:
 CHALKED_DB=/data/chalked.sqlite3
 ```
 
-Also back up this file regularly. SQLite is good enough for a closed test with a small group, but it should not be the final database for public traffic.
+Render only preserves files written under the disk mount path, so do not point `CHALKED_DB` anywhere outside `/data` in production. Also back up this file regularly. SQLite is good enough for a closed test with a small group, but it should not be the final database for public traffic.
+
+If the live Render service already has users or leagues on `/tmp/chalked.sqlite3`, do not switch `CHALKED_DB` to `/data/chalked.sqlite3` until you copy the old database. The safest manual migration is:
+
+1. Add the Render disk at `/data` while temporarily keeping `CHALKED_DB=/tmp/chalked.sqlite3`.
+2. Open the Render shell and copy `/tmp/chalked.sqlite3` to `/data/chalked.sqlite3`.
+3. Set `CHALKED_DB=/data/chalked.sqlite3`.
+4. Redeploy and confirm `/api/health` works.
 
 ## Object storage for uploads
 

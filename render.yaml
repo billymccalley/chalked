@@ -2,21 +2,25 @@ services:
   - type: web
     name: chalked
     runtime: python
-    plan: free
+    plan: starter
     buildCommand: pip install -r requirements.txt
     startCommand: python -m backend.chalked_backend.server
     healthCheckPath: /api/health
+    disk:
+      name: chalked-data
+      mountPath: /data
+      sizeGB: 1
     envVars:
       - key: CHALKED_ENV
         value: production
       - key: CHALKED_HOST
         value: 0.0.0.0
       - key: CHALKED_DB
-        value: /tmp/chalked.sqlite3
+        value: /data/chalked.sqlite3
       - key: CHALKED_PUBLIC_URL
-        value: https://chalked.onrender.com
+        value: https://chalked-srnz.onrender.com
       - key: CHALKED_ALLOWED_ORIGINS
-        value: https://chalked.onrender.com
+        value: https://chalked-srnz.onrender.com
       - key: CHALKED_CRON_SECRET
         generateValue: true
       - key: CHALKED_MAIL_FROM
