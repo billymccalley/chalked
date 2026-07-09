@@ -14,7 +14,7 @@ from typing import Callable
 from urllib.parse import parse_qs, urlparse
 
 from .db import init_db, transaction
-from .security import new_id
+from .storage import upload_image
 from .services import (
     ApiError,
     activity_feed,
@@ -338,13 +338,12 @@ def upload_route(req: RequestHandler, _: dict[str, str]) -> dict:
     if len(raw) > 3 * 1024 * 1024:
         raise ApiError(400, "Image must be under 3 MB")
     ext = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp", "image/gif": ".gif"}[mime]
-    UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
-    filename = f"{new_id('img')}{ext}"
-    target = (UPLOAD_ROOT / filename).resolve()
-    if not str(target).startswith(str(UPLOAD_ROOT.resolve())):
-        raise ApiError(400, "Invalid upload path")
-    target.write_bytes(raw)
-    return {"url": f"/uploads/{filename}"}
+    try:
+        return upload_image(raw, mime, ext, UPLOAD_ROOT)
+    except ValueError as exc:
+        raise ApiError(400, str(exc))
+    except RuntimeError as exc:
+        raise ApiError(502, str(exc))
 
 
 def leagues(req: RequestHandler, _: dict[str, str]) -> dict:

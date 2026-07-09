@@ -31,3 +31,29 @@ services:
         sync: false
       - key: CHALKED_SMTP_TLS
         value: 1
+      - key: CHALKED_UPLOAD_BUCKET
+        sync: false
+      - key: CHALKED_UPLOAD_ENDPOINT
+        sync: false
+      - key: CHALKED_UPLOAD_ACCESS_KEY_ID
+        sync: false
+      - key: CHALKED_UPLOAD_SECRET_ACCESS_KEY
+        sync: false
+      - key: CHALKED_UPLOAD_REGION
+        value: auto
+      - key: CHALKED_UPLOAD_PUBLIC_URL
+        sync: false
+      - key: CHALKED_UPLOAD_PREFIX
+        value: uploads
+
+  - type: cron
+    name: chalked-settlement
+    runtime: python
+    schedule: "*/5 * * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m backend.chalked_backend.jobs settle
+    envVars:
+      - key: CHALKED_PUBLIC_URL
+        sync: false
+      - key: CHALKED_CRON_SECRET
+        sync: false

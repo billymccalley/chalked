@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from backend.chalked_backend import services
+from backend.chalked_backend.storage import upload_image
 from backend.chalked_backend.db import init_db, transaction
 from backend.chalked_backend.providers import GameInfo, Player
 from backend.chalked_backend.services import (
@@ -430,6 +431,25 @@ class ServiceTests(unittest.TestCase):
 
             self.assertGreaterEqual(result["checked"], 1)
             self.assertIn("settled", result)
+
+    def test_upload_image_uses_local_fallback_without_object_storage_env(self):
+        keys = [
+            "CHALKED_UPLOAD_BUCKET",
+            "CHALKED_UPLOAD_ENDPOINT",
+            "CHALKED_UPLOAD_ACCESS_KEY_ID",
+            "CHALKED_UPLOAD_SECRET_ACCESS_KEY",
+        ]
+        old = {key: os.environ.pop(key, None) for key in keys}
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                result = upload_image(b"fake-image", "image/png", ".png", Path(tmp))
+                self.assertEqual(result["storage"], "local")
+                self.assertTrue(result["url"].startswith("/uploads/img_"))
+                self.assertTrue(any(Path(tmp).iterdir()))
+        finally:
+            for key, value in old.items():
+                if value is not None:
+                    os.environ[key] = value
 
 
 if __name__ == "__main__":
