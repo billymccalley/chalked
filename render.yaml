@@ -18,9 +18,9 @@ services:
       - key: CHALKED_DB
         value: /data/chalked.sqlite3
       - key: CHALKED_PUBLIC_URL
-        value: https://chalked-srnz.onrender.com
+        value: https://playchalked.com
       - key: CHALKED_ALLOWED_ORIGINS
-        value: https://chalked-srnz.onrender.com
+        value: https://playchalked.com,https://www.playchalked.com,https://chalked-srnz.onrender.com
       - key: CHALKED_CRON_SECRET
         generateValue: true
       - key: CHALKED_ADMIN_HANDLES
@@ -53,6 +53,8 @@ services:
         sync: false
       - key: CHALKED_UPLOAD_PREFIX
         value: uploads
+      - key: CHALKED_BACKUP_PREFIX
+        value: backups
 
   - type: cron
     name: chalked-settlement
@@ -60,6 +62,18 @@ services:
     schedule: "*/5 * * * *"
     buildCommand: pip install -r requirements.txt
     startCommand: python -m backend.chalked_backend.jobs settle
+    envVars:
+      - key: CHALKED_PUBLIC_URL
+        sync: false
+      - key: CHALKED_CRON_SECRET
+        sync: false
+
+  - type: cron
+    name: chalked-backup
+    runtime: python
+    schedule: "17 8 * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m backend.chalked_backend.jobs backup
     envVars:
       - key: CHALKED_PUBLIC_URL
         sync: false

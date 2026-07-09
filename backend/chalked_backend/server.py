@@ -3,9 +3,13 @@ from __future__ import annotations
 import base64
 import hmac
 import json
+import logging
 import mimetypes
 import os
 import re
+import sqlite3
+import tempfile
+from datetime import datetime, timezone
 from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -13,14 +17,17 @@ from pathlib import Path
 from typing import Callable
 from urllib.parse import parse_qs, urlparse
 
-from .db import init_db, transaction
-from .storage import upload_image, upload_storage_status
+from .db import db_path, init_db, transaction
+from .security import new_id
+from .storage import upload_backup, upload_image, upload_storage_status
 from .services import (
     ApiError,
     admin_overview,
     activity_feed,
+    check_rate_limit,
     create_league,
     create_pick,
+    create_feedback_report,
     create_user,
     change_password,
     confirm_email_verification,
@@ -54,6 +61,8 @@ from .services import (
 )
 
 
+logging.basicConfig(level=os.environ.get("CHALKED_LOG_LEVEL", "WARNING").upper(), format="%(asctime)s %(levelname)s %(name)s %(message)s")
+LOGGER = logging.getLogger(__name__)
 HOST = os.environ.get("CHALKED_HOST", "127.0.0.1")
 PORT = int(os.environ.get("CHALKED_PORT") or os.environ.get("PORT") or "8080")
 SESSION_COOKIE = os.environ.get("CHALKED_SESSION_COOKIE", "chalked_session")
@@ -106,6 +115,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def dispatch(self, method: str) -> None:
         parsed = urlparse(self.path)
+        self.request_id = self.headers.get("x-request-id") or new_id("req")
         try:
             if method == "GET" and not parsed.path.startswith("/api/"):
                 self.write_static(parsed.path)
@@ -113,6 +123,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             for route_method, pattern, handler in ROUTES:
                 match = re.fullmatch(pattern, parsed.path)
                 if route_method == method and match:
+                    self.enforce_rate_limit(method, parsed.path)
                     result = handler(self, match.groupdict())
                     if isinstance(result, _AlreadyWritten):
                         return
@@ -120,9 +131,27 @@ class RequestHandler(BaseHTTPRequestHandler):
                     return
             raise ApiError(404, "Route not found")
         except ApiError as exc:
-            self.write_json({"error": exc.message}, exc.status)
+            if exc.status >= 500:
+                LOGGER.warning("api_error request_id=%s method=%s path=%s status=%s error=%s", self.request_id, method, parsed.path, exc.status, exc.message)
+            self.write_json({"error": exc.message, "request_id": self.request_id}, exc.status)
         except Exception as exc:
-            self.write_json({"error": "Internal server error", "detail": str(exc)}, 500)
+            LOGGER.exception("unhandled_error request_id=%s method=%s path=%s", self.request_id, method, parsed.path)
+            payload = {"error": "Internal server error", "request_id": self.request_id}
+            if not production_enabled():
+                payload["detail"] = str(exc)
+            self.write_json(payload, 500)
+
+    def enforce_rate_limit(self, method: str, path: str) -> None:
+        rule = rate_limit_rule(method, path)
+        if not rule:
+            return
+        forwarded = str(self.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+        host, *_ = self.client_address or ("",)
+        ip = forwarded or host or "unknown"
+        session = self.session_id() or "anon"
+        key = f"{rule['scope']}:{ip if rule['scope'] == 'ip' else session}:{path}"
+        with transaction() as conn:
+            check_rate_limit(conn, key, rule["route"], rule["limit"], rule["window"])
 
     def write_static(self, path: str) -> None:
         rel = "index.html" if path in ("", "/") else path.lstrip("/")
@@ -207,8 +236,22 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         if cookie:
             self.send_header("Set-Cookie", cookie)
+        if getattr(self, "request_id", None):
+            self.send_header("X-Request-ID", self.request_id)
         self.end_headers()
         self.wfile.write(body)
+
+
+def rate_limit_rule(method: str, path: str) -> dict | None:
+    if method == "OPTIONS" or path in {"/api/health"} or path.startswith("/api/system/"):
+        return None
+    if path in {"/api/auth/login", "/api/auth/register", "/api/auth/password-reset/request"}:
+        return {"route": "auth", "scope": "ip", "limit": 8, "window": 60}
+    if path in {"/api/auth/email/verify/request", "/api/uploads", "/api/feedback"}:
+        return {"route": "account_write", "scope": "session", "limit": 20, "window": 3600}
+    if method in {"POST", "PATCH", "DELETE"}:
+        return {"route": "write", "scope": "session", "limit": 120, "window": 60}
+    return None
 
 
 def cookie_header(session_id: str, clear: bool = False, secure: bool | None = None) -> str:
@@ -252,6 +295,42 @@ def settle_system_route(req: RequestHandler, _: dict[str, str]) -> dict:
             },
         )
         return result
+
+
+def backup_system_route(req: RequestHandler, _: dict[str, str]) -> dict:
+    require_system_secret(req)
+    source_path = db_path()
+    if not source_path.exists():
+        raise ApiError(404, "Database file not found")
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    filename = f"chalked-{stamp}.sqlite3"
+    with tempfile.TemporaryDirectory() as tmp:
+        snapshot = Path(tmp) / filename
+        source = sqlite3.connect(source_path)
+        target = sqlite3.connect(snapshot)
+        try:
+            source.backup(target)
+        finally:
+            target.close()
+            source.close()
+        raw = snapshot.read_bytes()
+    try:
+        stored = upload_backup(raw, filename, source_path.parent / "backups")
+    except RuntimeError as exc:
+        raise ApiError(502, str(exc))
+    with transaction() as conn:
+        status = record_system_status(
+            conn,
+            "backup",
+            {
+                "ok": True,
+                "filename": filename,
+                "bytes": len(raw),
+                "storage": stored.get("storage"),
+                "url": stored.get("url"),
+            },
+        )
+    return {"backup": status, "stored": stored, "bytes": len(raw)}
 
 
 def register(req: RequestHandler, _: dict[str, str]) -> object:
@@ -369,6 +448,12 @@ def upload_route(req: RequestHandler, _: dict[str, str]) -> dict:
         raise ApiError(400, str(exc))
     except RuntimeError as exc:
         raise ApiError(502, str(exc))
+
+
+def feedback_route(req: RequestHandler, _: dict[str, str]) -> dict:
+    user = req.current_user()
+    with transaction() as conn:
+        return {"feedback": create_feedback_report(conn, user["id"], req.read_json(), req.session_meta())}
 
 
 def leagues(req: RequestHandler, _: dict[str, str]) -> dict:
@@ -502,6 +587,7 @@ class _AlreadyWritten:
 ROUTES: list[tuple[str, str, RouteHandler]] = [
     ("GET", r"/api/health", health),
     ("POST", r"/api/system/settle", settle_system_route),
+    ("POST", r"/api/system/backup", backup_system_route),
     ("POST", r"/api/auth/register", register),
     ("POST", r"/api/auth/login", login_route),
     ("POST", r"/api/auth/logout", logout),
@@ -516,6 +602,7 @@ ROUTES: list[tuple[str, str, RouteHandler]] = [
     ("GET", r"/api/profile", profile_route),
     ("PATCH", r"/api/profile", update_profile_route),
     ("POST", r"/api/uploads", upload_route),
+    ("POST", r"/api/feedback", feedback_route),
     ("GET", r"/api/admin/status", admin_status_route),
     ("POST", r"/api/admin/users/(?P<user_id>[^/]+)/blacklist", admin_blacklist_route),
     ("DELETE", r"/api/admin/users/(?P<user_id>[^/]+)/blacklist", admin_clear_blacklist_route),

@@ -225,6 +225,26 @@ CREATE TABLE IF NOT EXISTS user_moderation (
   updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS rate_limits (
+  key TEXT NOT NULL,
+  route TEXT NOT NULL,
+  count INTEGER NOT NULL,
+  reset_at TEXT NOT NULL,
+  PRIMARY KEY (key, route)
+);
+
+CREATE TABLE IF NOT EXISTS feedback_reports (
+  id TEXT PRIMARY KEY,
+  user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+  category TEXT NOT NULL,
+  message TEXT NOT NULL,
+  page_url TEXT,
+  user_agent TEXT,
+  ip_address TEXT,
+  status TEXT NOT NULL DEFAULT 'open',
+  created_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_picks_league_user ON picks(league_id, user_id);
 CREATE INDEX IF NOT EXISTS idx_matchups_slate ON matchups(slate_id);
 CREATE INDEX IF NOT EXISTS idx_memberships_user ON memberships(user_id);
@@ -232,3 +252,4 @@ CREATE INDEX IF NOT EXISTS idx_playoffs_league ON playoff_matchups(league_id, ro
 CREATE INDEX IF NOT EXISTS idx_activity_league ON activity_events(league_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_email_tokens_hash ON email_tokens(token_hash);
 CREATE INDEX IF NOT EXISTS idx_user_moderation_status ON user_moderation(status);
+CREATE INDEX IF NOT EXISTS idx_feedback_status ON feedback_reports(status, created_at);

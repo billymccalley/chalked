@@ -2652,6 +2652,15 @@ renderProfile = function(){
       <button class="btn ghost" style="margin-top:10px" onclick="logoutOtherSessions()">Log out other sessions</button>
       <small style="display:block;color:var(--muted);margin-top:8px">Changing your password keeps this session and signs out the others.</small>
     </div>
+    <div class="section-h" style="font-size:16px;margin-top:18px">Report Issue</div>
+    <div class="alias-card">
+      <div class="form-grid">
+        <div class="form-field"><label>Type</label><select id="feedbackCategory"><option value="bug">Bug</option><option value="slate">Slate/player data</option><option value="account">Account</option><option value="idea">Idea</option></select></div>
+        <div class="form-field" style="grid-column:1/-1"><label>What happened?</label><textarea id="feedbackMessage" placeholder="Tell us what broke, looked wrong, or would make Chalked better."></textarea></div>
+      </div>
+      <button class="btn" style="margin-top:10px" onclick="submitFeedback()">Send report</button>
+      <small style="display:block;color:var(--muted);margin-top:8px">This includes the current page and your account so it is easier to fix.</small>
+    </div>
     <div class="section-h" style="font-size:16px;margin-top:18px">Active Sessions</div>
     <div class="alias-list">${(apiProfile?.sessions || []).map(s=>`<div class="alias-card">
       <b>${s.current?'Current session':'Signed-in device'}</b>
@@ -2673,8 +2682,8 @@ renderProfile = function(){
   $('#badgeGrid').innerHTML = `<div class="empty"><b>Backend profile is live</b>Badges are next after real stat settlement.</div>`;
 };
 
-function adminFreshnessLabel(cron){
-  if(!cron?.updated_at) return {label:'never', cls:'bad', note:'No settlement heartbeat has been recorded yet.'};
+function adminFreshnessLabel(cron, name='job'){
+  if(!cron?.updated_at) return {label:'never', cls:'bad', note:`No ${name} heartbeat has been recorded yet.`};
   const ageMs = Date.now() - Date.parse(cron.updated_at);
   const mins = Math.max(0, Math.round(ageMs / 60000));
   return {
@@ -2695,14 +2704,23 @@ renderAdmin = async function(){
   try{
     apiAdminStatus = await apiFetch('/api/admin/status');
     const s = apiAdminStatus;
-    const cron = adminFreshnessLabel(s.cron);
+    const cron = adminFreshnessLabel(s.cron, 'settlement');
+    const backup = adminFreshnessLabel(s.backup, 'backup');
     const storageGood = s.storage?.mode === 's3';
+    const feedbackRows = (s.feedback || []).map(f=>`<div class="activity-item">
+      <span class="activity-icon">${esc((f.category || 'fb').slice(0,2).toUpperCase())}</span>
+      <div class="activity-copy"><b>${esc(f.user?.display_name || f.user?.handle || 'Unknown user')} - ${esc(f.category)}</b><span>${esc(f.message)}</span></div>
+      <span class="activity-time">${shortTime(f.created_at)}</span>
+    </div>`).join('') || `<div class="empty"><b>No reports yet</b>Good quiet.</div>`;
     panel.innerHTML = `<div class="admin-grid">
       <div class="admin-card"><span>Settlement cron</span><b class="admin-status ${cron.cls}">${esc(cron.label)}</b><small>${esc(cron.note)}</small></div>
+      <div class="admin-card"><span>Database backup</span><b class="admin-status ${backup.cls}">${esc(backup.label)}</b><small>${esc(backup.note)}</small></div>
       <div class="admin-card"><span>Upload storage</span><b class="admin-status ${storageGood?'good':'bad'}">${esc((s.storage?.mode || 'local').toUpperCase())}</b><small>${storageGood ? esc(s.storage.public_url || s.storage.bucket || 'R2/S3 configured') : 'Production uploads need R2/S3.'}</small></div>
       <div class="admin-card"><span>Users</span><b>${s.counts.users}</b><small>${s.counts.blacklisted} blacklisted</small></div>
-      <div class="admin-card"><span>Open action</span><b>${s.counts.open_picks}</b><small>${s.counts.open_slates} open slates</small></div>
+      <div class="admin-card"><span>Open action</span><b>${s.counts.open_picks}</b><small>${s.counts.open_slates} slates - ${s.counts.open_feedback || 0} reports</small></div>
     </div>
+    <div class="section-h" style="font-size:18px">Latest Reports</div>
+    <div class="activity-list" style="margin-bottom:18px">${feedbackRows}</div>
     <div class="section-h" style="font-size:18px">Account Moderation</div>
     <div class="admin-table-wrap"><table class="admin-table">
       <thead><tr><th>User</th><th>Email</th><th>Status</th><th>Leagues</th><th>Picks</th><th>Reason</th><th></th></tr></thead>
@@ -2781,6 +2799,17 @@ async function logoutOtherSessions(){
     apiProfile.sessions = sessions.sessions || [];
     renderProfile();
     toast(`Logged out ${result.removed || 0} other sessions`);
+  }catch(e){ toast(e.message); }
+}
+
+async function submitFeedback(){
+  const message = $('#feedbackMessage')?.value.trim() || '';
+  const category = $('#feedbackCategory')?.value || 'general';
+  if(message.length < 8) return toast('Add a little more detail first');
+  try{
+    await apiFetch('/api/feedback', {method:'POST', body:JSON.stringify({category, message, page_url:location.href})});
+    $('#feedbackMessage').value = '';
+    toast('Report sent. Thank you.');
   }catch(e){ toast(e.message); }
 }
 

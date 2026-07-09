@@ -57,6 +57,21 @@ def upload_image(raw: bytes, mime: str, ext: str, upload_root: Path) -> dict:
     return {"url": f"/uploads/{filename}", "storage": "local"}
 
 
+def upload_backup(raw: bytes, filename: str, backup_root: Path) -> dict:
+    prefix = os.environ.get("CHALKED_BACKUP_PREFIX", "backups").strip("/") or "backups"
+    if s3_upload_configured():
+        key = f"{prefix}/{filename}"
+        return upload_s3_compatible(raw, "application/octet-stream", key)
+    if production_uploads_require_object_storage():
+        raise RuntimeError("Object storage is required for production backups")
+    backup_root.mkdir(parents=True, exist_ok=True)
+    target = (backup_root / filename).resolve()
+    if not str(target).startswith(str(backup_root.resolve())):
+        raise ValueError("Invalid backup path")
+    target.write_bytes(raw)
+    return {"storage": "local", "path": str(target)}
+
+
 def upload_s3_compatible(raw: bytes, mime: str, key: str) -> dict:
     bucket = os.environ["CHALKED_UPLOAD_BUCKET"].strip()
     endpoint = os.environ["CHALKED_UPLOAD_ENDPOINT"].rstrip("/")

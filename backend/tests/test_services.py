@@ -13,8 +13,10 @@ from backend.chalked_backend.services import (
     ApiError,
     activity_feed,
     build_daily_eligibility,
+    check_rate_limit,
     confirm_email_verification,
     confirm_password_reset,
+    create_feedback_report,
     create_league,
     create_pick,
     create_user,
@@ -253,6 +255,38 @@ class ServiceTests(unittest.TestCase):
                 set_user_moderation(conn, admin["id"], user["id"], "active")
                 public, _ = login(conn, {"login": "badacct", "password": "secret123"})
                 self.assertEqual(public["handle"], "badacct")
+        finally:
+            if old_admins is None:
+                os.environ.pop("CHALKED_ADMIN_HANDLES", None)
+            else:
+                os.environ["CHALKED_ADMIN_HANDLES"] = old_admins
+
+    def test_rate_limit_blocks_after_limit(self):
+        with transaction(self.db_path) as conn:
+            check_rate_limit(conn, "ip:127.0.0.1:/api/auth/login", "auth", 2, 60)
+            check_rate_limit(conn, "ip:127.0.0.1:/api/auth/login", "auth", 2, 60)
+            with self.assertRaises(ApiError) as blocked:
+                check_rate_limit(conn, "ip:127.0.0.1:/api/auth/login", "auth", 2, 60)
+            self.assertEqual(blocked.exception.status, 429)
+
+    def test_feedback_report_is_visible_to_admin(self):
+        old_admins = os.environ.get("CHALKED_ADMIN_HANDLES")
+        try:
+            os.environ["CHALKED_ADMIN_HANDLES"] = "feedbackboss"
+            with transaction(self.db_path) as conn:
+                admin = create_user(conn, {"handle": "feedbackboss", "password": "secret123"})
+                user = create_user(conn, {"handle": "reporter", "password": "secret123"})
+                result = create_feedback_report(
+                    conn,
+                    user["id"],
+                    {"category": "bug", "message": "The slate button looked stuck", "page_url": "https://playchalked.com/"},
+                    {"user_agent": "test", "ip_address": "127.0.0.1"},
+                )
+                overview = admin_overview(conn, admin["id"])
+
+                self.assertTrue(result["id"].startswith("fbk_"))
+                self.assertEqual(overview["counts"]["open_feedback"], 1)
+                self.assertEqual(overview["feedback"][0]["category"], "bug")
         finally:
             if old_admins is None:
                 os.environ.pop("CHALKED_ADMIN_HANDLES", None)

@@ -5,6 +5,7 @@ import sqlite3
 import logging
 import json
 import os
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -476,6 +477,92 @@ def system_status(conn: sqlite3.Connection, key: str) -> dict | None:
     return {"key": row["key"], "value": json.loads(row["value"] or "{}"), "updated_at": row["updated_at"]}
 
 
+def check_rate_limit(conn: sqlite3.Connection, key: str, route: str, limit: int, window_seconds: int) -> dict:
+    now = datetime.now(timezone.utc)
+    row = conn.execute("SELECT * FROM rate_limits WHERE key = ? AND route = ?", (key, route)).fetchone()
+    if row:
+        reset_at = parse_utc(row["reset_at"])
+        if reset_at > now:
+            count = int(row["count"]) + 1
+            conn.execute("UPDATE rate_limits SET count = ? WHERE key = ? AND route = ?", (count, key, route))
+            if count > limit:
+                retry_after = max(1, int((reset_at - now).total_seconds()))
+                raise ApiError(429, f"Too many requests. Try again in {retry_after} seconds.")
+            return {"limited": False, "count": count, "reset_at": row["reset_at"]}
+    reset_at = (now + timedelta(seconds=window_seconds)).isoformat()
+    conn.execute(
+        """
+        INSERT INTO rate_limits (key, route, count, reset_at)
+        VALUES (?, ?, 1, ?)
+        ON CONFLICT(key, route) DO UPDATE SET count = 1, reset_at = excluded.reset_at
+        """,
+        (key, route, reset_at),
+    )
+    conn.execute("DELETE FROM rate_limits WHERE reset_at < ?", ((now - timedelta(minutes=5)).isoformat(),))
+    return {"limited": False, "count": 1, "reset_at": reset_at}
+
+
+def create_feedback_report(conn: sqlite3.Connection, user_id: str | None, data: dict, meta: dict | None = None) -> dict:
+    message = str(data.get("message") or "").strip()
+    if len(message) < 8:
+        raise ApiError(400, "Tell us a little more before sending.")
+    if len(message) > 2000:
+        raise ApiError(400, "Feedback must be under 2000 characters.")
+    category = str(data.get("category") or "general").strip().lower()[:40] or "general"
+    if not re.fullmatch(r"[a-z0-9_-]+", category):
+        category = "general"
+    meta = meta or {}
+    report_id = new_id("fbk")
+    conn.execute(
+        """
+        INSERT INTO feedback_reports (id, user_id, category, message, page_url, user_agent, ip_address, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            report_id,
+            user_id,
+            category,
+            message,
+            str(data.get("page_url") or "")[:500] or None,
+            str(meta.get("user_agent") or "")[:500] or None,
+            str(meta.get("ip_address") or "")[:120] or None,
+            now_iso(),
+        ),
+    )
+    return {"id": report_id, "status": "received"}
+
+
+def latest_feedback(conn: sqlite3.Connection, limit: int = 12) -> list[dict]:
+    rows = conn.execute(
+        """
+        SELECT f.*, u.handle, u.display_name
+        FROM feedback_reports f
+        LEFT JOIN users u ON u.id = f.user_id
+        ORDER BY f.created_at DESC
+        LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+    return [
+        {
+            "id": r["id"],
+            "category": r["category"],
+            "message": r["message"],
+            "page_url": r["page_url"],
+            "status": r["status"],
+            "created_at": r["created_at"],
+            "user": {
+                "id": r["user_id"],
+                "handle": r["handle"],
+                "display_name": r["display_name"] or r["handle"],
+            }
+            if r["user_id"]
+            else None,
+        }
+        for r in rows
+    ]
+
+
 def admin_overview(conn: sqlite3.Connection, user_id: str) -> dict:
     user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     require_admin(user)
@@ -485,6 +572,7 @@ def admin_overview(conn: sqlite3.Connection, user_id: str) -> dict:
         "open_slates": conn.execute("SELECT COUNT(*) c FROM slates WHERE status = 'open'").fetchone()["c"],
         "open_picks": conn.execute("SELECT COUNT(*) c FROM picks WHERE status = 'open'").fetchone()["c"],
         "blacklisted": conn.execute("SELECT COUNT(*) c FROM user_moderation WHERE status = 'blacklisted'").fetchone()["c"],
+        "open_feedback": conn.execute("SELECT COUNT(*) c FROM feedback_reports WHERE status = 'open'").fetchone()["c"],
     }
     users = conn.execute(
         """
@@ -501,6 +589,8 @@ def admin_overview(conn: sqlite3.Connection, user_id: str) -> dict:
     return {
         "counts": counts,
         "cron": system_status(conn, "settlement"),
+        "backup": system_status(conn, "backup"),
+        "feedback": latest_feedback(conn),
         "users": [
             {
                 "id": r["id"],

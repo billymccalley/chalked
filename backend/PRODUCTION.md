@@ -73,6 +73,7 @@ CHALKED_UPLOAD_SECRET_ACCESS_KEY=your-r2-secret-key
 CHALKED_UPLOAD_REGION=auto
 CHALKED_UPLOAD_PUBLIC_URL=https://uploads.playchalked.com
 CHALKED_UPLOAD_PREFIX=uploads
+CHALKED_BACKUP_PREFIX=backups
 ```
 
 Optional:
@@ -122,6 +123,7 @@ CHALKED_UPLOAD_SECRET_ACCESS_KEY=your-r2-secret-key
 CHALKED_UPLOAD_REGION=auto
 CHALKED_UPLOAD_PUBLIC_URL=https://uploads.playchalked.com
 CHALKED_UPLOAD_PREFIX=uploads
+CHALKED_BACKUP_PREFIX=backups
 ```
 
 If those env vars are missing, Chalked falls back to local `/uploads/...` storage.
@@ -141,15 +143,28 @@ The endpoint checks open slates, syncs MLB live-feed stats, and settles final ma
 
 Every successful cron call records a `settlement` heartbeat in the database. Admin users can verify the cron freshness from the in-app Admin tab.
 
+## Scheduled backups
+
+Production should also run a daily database backup:
+
+```text
+POST https://your-domain.com/api/system/backup
+Authorization: Bearer $CHALKED_CRON_SECRET
+```
+
+The included `chalked-backup` Render cron job runs `python -m backend.chalked_backend.jobs backup`. It creates a safe SQLite snapshot and uploads it to the same R2/S3 bucket under `CHALKED_BACKUP_PREFIX`, usually `backups`.
+
+Every successful backup records a `backup` heartbeat in the database. Admin users can verify backup freshness from the in-app Admin tab.
+
 ## Admin access
 
 Set `CHALKED_ADMIN_HANDLES` to a comma-separated list of admin usernames or emails, for example:
 
 ```text
-CHALKED_ADMIN_HANDLES=billy@playchalked.com,billy
+CHALKED_ADMIN_HANDLES=yourname@playchalked.com,yourusername
 ```
 
-Admin users see an Admin tab with cron freshness, upload storage mode, beta counts, and account blacklist controls. Blacklisted accounts are signed out and blocked from logging back in.
+Admin users see an Admin tab with cron freshness, backup freshness, upload storage mode, beta counts, user reports, and account blacklist controls. Blacklisted accounts are signed out and blocked from logging back in.
 
 ## Domain setup
 
@@ -170,9 +185,9 @@ CHALKED_ALLOWED_ORIGINS=https://playchalked.com,https://www.playchalked.com
 
 - Move database to Postgres.
 - Verify uploaded profile/league images are using object storage.
-- Add automated database backups.
+- Confirm automated database backups are fresh and downloadable.
 - Add observability: uptime checks, error logging, and basic metrics.
-- Add rate limiting for auth, uploads, and pick creation.
+- Expand rate limiting and abuse controls as traffic grows.
 - Add legal/compliance review before any real-money, prizes, entry fees, or withdrawals.
 
 ## Local Docker run
