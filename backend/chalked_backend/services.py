@@ -673,6 +673,35 @@ def delete_league(conn: sqlite3.Connection, user_id: str, league_id: str) -> dic
     return {"deleted": league_id, "name": league["name"]}
 
 
+def leave_league(conn: sqlite3.Connection, user_id: str, league_id: str) -> dict:
+    membership = require_member(conn, user_id, league_id)
+    league = conn.execute("SELECT id, name FROM leagues WHERE id = ?", (league_id,)).fetchone()
+    if not league:
+        raise ApiError(404, "League not found")
+    if membership["role"] == "owner":
+        raise ApiError(400, "Owners must delete the league or transfer ownership before leaving")
+    user = conn.execute("SELECT handle, display_name FROM users WHERE id = ?", (user_id,)).fetchone()
+    name = (user["display_name"] or user["handle"]) if user else "A manager"
+
+    conn.execute("DELETE FROM picks WHERE league_id = ? AND user_id = ?", (league_id, user_id))
+    conn.execute("DELETE FROM standings WHERE league_id = ? AND user_id = ?", (league_id, user_id))
+    conn.execute(
+        """
+        UPDATE playoff_matchups
+        SET user_a_id = CASE WHEN user_a_id = ? THEN NULL ELSE user_a_id END,
+            user_b_id = CASE WHEN user_b_id = ? THEN NULL ELSE user_b_id END,
+            winner_user_id = CASE WHEN winner_user_id = ? THEN NULL ELSE winner_user_id END,
+            updated_at = ?
+        WHERE league_id = ? AND (user_a_id = ? OR user_b_id = ? OR winner_user_id = ?)
+        """,
+        (user_id, user_id, user_id, now_iso(), league_id, user_id, user_id, user_id),
+    )
+    conn.execute("DELETE FROM activity_events WHERE league_id = ? AND user_id = ?", (league_id, user_id))
+    conn.execute("DELETE FROM memberships WHERE league_id = ? AND user_id = ?", (league_id, user_id))
+    log_activity(conn, league_id, None, "member_left", f"{name} left the league")
+    return {"left": league_id, "name": league["name"]}
+
+
 def validate_league_settings(settings: dict) -> None:
     if int(settings["min_stake"]) > int(settings["max_stake"]):
         raise ApiError(400, "Minimum stake cannot exceed maximum stake")

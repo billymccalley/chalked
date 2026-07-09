@@ -658,6 +658,19 @@ table.board{width:100%;border-collapse:collapse;background:linear-gradient(180de
   </div>
 </div>
 
+<!-- leave league confirm -->
+<div class="overlay hide" id="leaveLeagueModal">
+  <div class="modal">
+    <h3>Leave League?</h3>
+    <p>This removes you from <b id="leaveLeagueName">this league</b> and erases your picks, standings row, league profile, and playoff spot there.</p>
+    <p class="k">This cannot be undone.</p>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:12px">
+      <button class="btn ghost" onclick="closeLeaveLeague()">Cancel</button>
+      <button class="btn danger" onclick="confirmLeaveLeague()">Leave league</button>
+    </div>
+  </div>
+</div>
+
 <!-- logout confirm -->
 <div class="overlay hide" id="logoutModal">
   <div class="modal">
@@ -970,7 +983,6 @@ function avatarHTML(pid, side){
 function leagueChips(l){
   return `<span class="league-chip"><b>${l.code}</b> code</span>
     <span class="league-chip"><b>${l.memberCount}</b> managers</span>
-    <span class="league-chip"><b>${l.settings.bankroll}</b> bank</span>
     <span class="league-chip"><b>${l.settings.minStake}-${l.settings.maxStake}</b> stake</span>
     <span class="league-chip"><b>${l.settings.minMult.toFixed(1)}-${l.settings.maxMult.toFixed(1)}x</b> mult</span>
     <span class="league-chip"><b>${l.settings.playoffEnabled?'ON':'OFF'}</b> playoffs</span>`;
@@ -1016,8 +1028,7 @@ function renderLeagueDashboard(l){
     <div class="league-stat-mini"><span>Season net</span><b class="${(user.season||0)>=0?'pos':'neg'}">${fmt(user.season||0)}</b><small>${user.w||0}-${user.l||0} record</small></div>
     <div class="mini-bars"><span class="mini-title">Slate mix</span>${statBars}</div>
     <div class="mini-standings"><span class="mini-title">Top standings</span>${standings}</div>
-    <div class="mini-standings"><span class="mini-title">League activity</span>${activity}</div>
-    <div class="league-stat-mini"><span>Bank left</span><b>${fmt(user.bankTotal ?? l.settings.bankroll)}</b><small>Weekly bankroll</small></div>`;
+    <div class="mini-standings"><span class="mini-title">League activity</span>${activity}</div>`;
 }
 function activityIcon(kind){
   return {league_created:'NEW', member_joined:'JOIN', pick_locked:'PICK', pick_won:'WIN', pick_lost:'LOSS'}[kind] || 'LOG';
@@ -1037,6 +1048,19 @@ function shortTime(value){
 }
 function renderLeagues(){
   const l = L();
+  if(!l){
+    $('#leagueAvatarBig').innerHTML = leagueAvatarHTML({name:'Chalked'}, 'league-avatar-lg');
+    $('#leagueNameBig').textContent = 'Join or create a league';
+    $('#leagueOwnerBig').classList.add('hide');
+    $('#leagueDesc').textContent = 'Pick an open league, join by code, or create your own room.';
+    $('#leagueMeta').innerHTML = '';
+    $('#leagueDash').innerHTML = `<div class="empty" style="grid-column:1/-1"><b>No active league</b>Your slate and standings appear after you join a league.</div>`;
+    $('#leagueList').innerHTML = `<div class="empty" style="grid-column:1/-1"><b>No joined leagues</b>Create one or join an open league below.</div>`;
+    $('#openLeagueList').innerHTML = (S.openLeagues || OPEN_LEAGUES || []).map(x=>leagueCard(x, false)).join('')
+      || `<div class="empty" style="grid-column:1/-1"><b>No open leagues</b>Create a league to get started.</div>`;
+    $('#leagueSettings').innerHTML = `<h3>League Rules</h3><div class="settings-note">Join or create a league to edit rules.</div>`;
+    return;
+  }
   $('#leagueAvatarBig').innerHTML = leagueAvatarHTML(l, 'league-avatar-lg');
   $('#leagueNameBig').textContent = l.name;
   $('#leagueOwnerBig').classList.toggle('hide', !isOwner(l));
@@ -1050,7 +1074,7 @@ function renderLeagues(){
 }
 function leagueCard(l, joined){
   const active = joined && l.id===S.activeLeagueId;
-  const owner = l.ownerId==='me';
+  const owner = isOwner(l);
   return `<div class="league-card ${active?'active':''}">
     <div class="league-card-head">${leagueAvatarHTML(l)}
       <div><h3>${esc(l.name)} ${owner?'<span class="owner-crown" title="You own this league"><span class="emoji">&#128081;</span> OWN</span>':''}</h3>
@@ -1061,6 +1085,7 @@ function leagueCard(l, joined){
       ${joined ? `<button class="btn ${active?'gold':''}" onclick="switchLeague('${l.id}')">${active?'Active':'Switch'}</button>`
         : `<button class="btn gold" onclick="joinOpenLeague('${l.code}')">Join</button>`}
       <button class="btn ghost" onclick="copyLeagueCode('${l.code}')">Invite</button>
+      ${joined && !owner ? `<button class="btn danger" onclick="askLeaveLeague('${l.id}')">Leave</button>` : ''}
     </div>
   </div>`;
 }
@@ -1120,7 +1145,11 @@ function renderLeagueSettings(){
       <div class="setting-head"><span>Danger zone</span><b>OWNER</b></div>
       <button class="btn danger" style="width:100%" onclick="askDeleteLeague('${l.id}')">Delete league</button>
       <small>Shows a confirmation first. Deletes picks, standings, and playoff data.</small>
-    </div>`:''}`;
+    </div>`:`<div class="setting-row">
+      <div class="setting-head"><span>Membership</span><b>MEMBER</b></div>
+      <button class="btn danger" style="width:100%" onclick="askLeaveLeague('${l.id}')">Leave league</button>
+      <small>Shows a confirmation first. Removes your league picks, standings, and profile.</small>
+    </div>`}`;
 }
 function updateSetting(key, value){
   const l = L();
@@ -1205,6 +1234,39 @@ async function confirmDeleteLeague(){
     go('leagues');
   }catch(e){ toast(e.message); }
 }
+let pendingLeaveLeagueId = null;
+function askLeaveLeague(id){
+  const l = S.leagues.find(x=>x.id===id);
+  if(!l || isOwner(l)) return;
+  pendingLeaveLeagueId = id;
+  $('#leaveLeagueName').textContent = l.name;
+  $('#leaveLeagueModal').classList.remove('hide');
+}
+function closeLeaveLeague(){
+  pendingLeaveLeagueId = null;
+  $('#leaveLeagueModal').classList.add('hide');
+}
+async function confirmLeaveLeague(){
+  const id = pendingLeaveLeagueId;
+  if(!id) return closeLeaveLeague();
+  try{
+    if(API_MODE){
+      await apiFetch(`/api/leagues/${id}/membership`, {method:'DELETE'});
+      closeLeaveLeague();
+      if(S.activeLeagueId === id) S.activeLeagueId = null;
+      leagueLoadCache.delete(id);
+      await apiLoad();
+    } else {
+      S.leagues = S.leagues.filter(l=>l.id!==id);
+      if(S.activeLeagueId === id) S.activeLeagueId = S.leagues[0]?.id;
+      DB.save(S);
+      closeLeaveLeague();
+      refresh();
+    }
+    toast('Left league');
+    go('leagues');
+  }catch(e){ toast(e.message); }
+}
 function askRefreshSlate(){
   if(!isOwner()) return;
   $('#refreshSlateModal').classList.remove('hide');
@@ -1267,6 +1329,19 @@ function copyLeagueCode(code){
 
 function renderBank(){
   const l = L();
+  if(!l){
+    $('#bankLeft').textContent = 0;
+    $('#bankTotal').textContent = 0;
+    $('#bankStaked').textContent = 0;
+    $('#bankMeter').style.width = '0%';
+    $('#seasonPts').textContent = '0';
+    $('#streakNum').textContent = 0;
+    $('#topLeagueName').textContent = 'No league';
+    $('#topLeagueCrown').classList.add('hide');
+    $('#decayWarn').textContent = ' - join a league to start picking';
+    $('#pickDot').classList.add('hide');
+    return;
+  }
   $('#bankLeft').textContent = bankLeft();
   $('#bankTotal').textContent = l.user.bankTotal;
   $('#bankStaked').textContent = stakedTotal();
@@ -1283,6 +1358,15 @@ function renderBank(){
 function renderSlate(){
   const l = L();
   const g = $('#slateGrid'); g.innerHTML='';
+  if(!l){
+    $('#weekNum').textContent = 1;
+    $('#slateSub').textContent = ' - join a league to see duels';
+    const chip = $('#slateDataChip');
+    if(chip) chip.textContent = 'No active league';
+    $('#refreshSlateBtn')?.classList.add('hide');
+    g.innerHTML = `<div class="empty" style="grid-column:1/-1"><b>No active league</b>Join or create a league to load a slate.</div>`;
+    return;
+  }
   $('#weekNum').textContent = l.week;
   $('#slateSub').textContent = ' - '+l.matchups.length+' duels in '+l.name;
   const chip = $('#slateDataChip');
@@ -1567,6 +1651,11 @@ function go(v){
 /* ---------- My Picks ---------- */
 function renderPicks(){
   const now = $('#picksNow');
+  if(!L()){
+    now.innerHTML = `<div class="empty"><b>No active league</b>Join a league to start making picks.</div>`;
+    $('#picksHist').innerHTML = `<div class="empty"><b>No history yet</b>Your settled weeks will show here.</div>`;
+    return;
+  }
   if(!L().picks.length){
     now.innerHTML = `<div class="empty"><b>No picks yet</b>Head to the slate and back somebody before lock.</div>`;
   } else {
@@ -1596,6 +1685,12 @@ function renderPicks(){
 /* ---------- Leaderboard ---------- */
 function renderBoard(){
   const l = L();
+  if(!l){
+    $('#boardTitle').textContent = 'Season Standings';
+    $('#boardNote').textContent = 'Join a league to see its leaderboard.';
+    $('#boardBody').innerHTML = `<tr><td colspan="6"><div class="empty"><b>No active league</b>Standings appear after you join a league.</div></td></tr>`;
+    return;
+  }
   $('#boardTitle').textContent = `${l.name} - Season Standings`;
   $('#boardNote').textContent = `Ranked by cumulative net points in ${l.name}. Code ${l.code} - ${l.memberCount} managers.`;
   const rows = [
@@ -1615,6 +1710,14 @@ function renderBoard(){
 
 /* ---------- Profile ---------- */
 function renderProfile(){
+  if(!L()){
+    $('#pfSeason').textContent = '0';
+    $('#pfRecord').textContent = '0-0';
+    $('#pfAcc').textContent = '-';
+    $('#pfStreak').textContent = 'STK 0';
+    $('#badgeGrid').innerHTML = `<div class="empty"><b>No league stats yet</b>Join a league and make picks to build your profile.</div>`;
+    return;
+  }
   $('#pfSeason').textContent = fmt(L().user.season);
   $('#pfRecord').textContent = `${L().user.w}-${L().user.l}`;
   $('#pfAcc').textContent = (L().user.w+L().user.l) ? Math.round(100*L().user.w/(L().user.w+L().user.l))+'%' : '-';
@@ -2139,10 +2242,6 @@ async function apiLoad(){
       return apiLoad();
     }catch(e){ toast(e.message); }
   }
-  if(!S.leagues.length && S.openLeagues.length){
-    await apiFetch(`/api/leagues/${S.openLeagues[0].id}/join`, {method:'POST', body:'{}'});
-    return apiLoad();
-  }
   if(!S.activeLeagueId || !S.leagues.some(l=>l.id===S.activeLeagueId)) S.activeLeagueId = S.leagues[0]?.id;
   if(S.activeLeagueId) await apiLoadLeague(S.activeLeagueId, true);
   refresh();
@@ -2270,7 +2369,19 @@ sideTotals = function(m){
 
 renderLeagues = function(){
   const l = L();
-  if(!l){ $('#leagueList').innerHTML = `<div class="empty"><b>Login required</b>Use the account box on the landing page.</div>`; return; }
+  if(!l){
+    $('#leagueAvatarBig').innerHTML = leagueAvatarHTML({name:'Chalked'}, 'league-avatar-lg');
+    $('#leagueNameBig').textContent = 'Join or create a league';
+    $('#leagueOwnerBig').classList.add('hide');
+    $('#leagueDesc').textContent = 'Pick an open league, join by code, or create your own room.';
+    $('#leagueMeta').innerHTML = '';
+    $('#leagueDash').innerHTML = `<div class="empty" style="grid-column:1/-1"><b>No active league</b>Your slate and standings appear after you join a league.</div>`;
+    $('#leagueList').innerHTML = `<div class="empty" style="grid-column:1/-1"><b>No joined leagues</b>Create one or join an open league below.</div>`;
+    $('#openLeagueList').innerHTML = S.openLeagues.map(x=>leagueCard(x, false)).join('')
+      || `<div class="empty" style="grid-column:1/-1"><b>No open leagues</b>Create one or join by code.</div>`;
+    $('#leagueSettings').innerHTML = `<h3>League Rules</h3><div class="settings-note">Join or create a league to edit rules.</div>`;
+    return;
+  }
   $('#leagueAvatarBig').innerHTML = leagueAvatarHTML(l, 'league-avatar-lg');
   $('#leagueNameBig').textContent = l.name;
   $('#leagueOwnerBig').classList.toggle('hide', !isOwner(l));
@@ -2296,6 +2407,7 @@ leagueCard = function(l, joined){
       ${joined ? `<button class="btn ${active?'gold':''}" onclick="switchLeague('${l.id}')">${active?'Active':'Switch'}</button>`
         : `<button class="btn gold" onclick="joinOpenLeague('${l.id}')">Join</button>`}
       <button class="btn ghost" onclick="copyLeagueCode('${l.code}')">Invite</button>
+      ${joined && !owner ? `<button class="btn danger" onclick="askLeaveLeague('${l.id}')">Leave</button>` : ''}
     </div>
   </div>`;
 };
@@ -2368,7 +2480,8 @@ function playoffBubbleHTML(l){
 function renderPlayoffs(){
   const target = $('#playoffView');
   if(!target) return;
-  target.innerHTML = renderPlayoffPanel(L());
+  const l = L();
+  target.innerHTML = l ? renderPlayoffPanel(l) : `<div class="playoff-panel"><b>No active league</b><p style="color:var(--muted);font-size:13px;margin-top:4px">Join a league to see its playoff picture.</p></div>`;
 }
 
 createLeague = async function(){
@@ -2433,6 +2546,12 @@ removePick = async function(mid){
 
 renderBoard = function(){
   const l = L();
+  if(!l){
+    $('#boardTitle').textContent = 'Season Standings';
+    $('#boardNote').textContent = 'Join a league to see its leaderboard.';
+    $('#boardBody').innerHTML = `<tr><td colspan="6"><div class="empty"><b>No active league</b>Standings appear after you join a league.</div></td></tr>`;
+    return;
+  }
   $('#boardTitle').textContent = `${l.name} - Season Standings`;
   $('#boardNote').textContent = `Ranked by cumulative net points in ${l.name}. Code ${l.code} - ${l.memberCount} managers.`;
   const rows = (l.boardRows || []).slice().sort((a,b)=>b.season-a.season);
@@ -2450,7 +2569,7 @@ renderBoard = function(){
 };
 
 renderProfile = function(){
-  const u = L().user;
+  const u = L()?.user || {season:0, w:0, l:0, streak:0};
   $('#pfSeason').textContent = fmt(u.season);
   $('#pfRecord').textContent = `${u.w}-${u.l}`;
   $('#pfAcc').textContent = (u.w+u.l) ? Math.round(100*u.w/(u.w+u.l))+'%' : '-';

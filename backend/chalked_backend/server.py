@@ -38,6 +38,7 @@ from .services import (
     remove_pick,
     require_member,
     logout_other_sessions,
+    leave_league,
     request_email_verification,
     request_password_reset,
     session_rows,
@@ -159,6 +160,17 @@ class RequestHandler(BaseHTTPRequestHandler):
             "ip_address": forwarded or host,
         }
 
+    def is_https(self) -> bool:
+        forwarded_proto = str(self.headers.get("x-forwarded-proto") or "").split(",")[0].strip().lower()
+        public = urlparse(os.environ.get("CHALKED_PUBLIC_URL") or "")
+        host = str(self.headers.get("host") or "").split(":", 1)[0].lower()
+        public_host = (public.hostname or "").lower()
+        return (
+            forwarded_proto == "https"
+            or str(self.headers.get("x-forwarded-ssl") or "").lower() == "on"
+            or (public.scheme == "https" and bool(public_host) and host == public_host)
+        )
+
     def current_user(self) -> dict:
         with transaction() as conn:
             ensure_seeded(conn)
@@ -196,10 +208,10 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
 
-def cookie_header(session_id: str, clear: bool = False) -> str:
+def cookie_header(session_id: str, clear: bool = False, secure: bool | None = None) -> str:
     domain = os.environ.get("CHALKED_COOKIE_DOMAIN")
     domain_attr = f"; Domain={domain}" if domain else ""
-    secure_attr = "; Secure" if cookie_secure_enabled() else ""
+    secure_attr = "; Secure" if (cookie_secure_enabled() if secure is None else secure) else ""
     if clear:
         return f"{SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax{secure_attr}{domain_attr}; Max-Age=0"
     return f"{SESSION_COOKIE}={session_id}; Path=/; HttpOnly; SameSite=Lax{secure_attr}{domain_attr}; Max-Age={30 * 24 * 60 * 60}"
@@ -235,7 +247,7 @@ def register(req: RequestHandler, _: dict[str, str]) -> object:
         ensure_seeded(conn)
         user = create_user(conn, data)
         public, session_id = login(conn, {"handle": data["handle"], "password": data["password"]}, req.session_meta())
-        req.write_json({"user": public_user(user), "session_user": public}, cookie=cookie_header(session_id))
+        req.write_json({"user": public_user(user), "session_user": public}, cookie=cookie_header(session_id, secure=req.is_https()))
         return _AlreadyWritten()
 
 
@@ -243,7 +255,7 @@ def login_route(req: RequestHandler, _: dict[str, str]) -> object:
     with transaction() as conn:
         ensure_seeded(conn)
         user, session_id = login(conn, req.read_json(), req.session_meta())
-        req.write_json({"user": user}, cookie=cookie_header(session_id))
+        req.write_json({"user": user}, cookie=cookie_header(session_id, secure=req.is_https()))
         return _AlreadyWritten()
 
 
@@ -252,7 +264,7 @@ def logout(req: RequestHandler, _: dict[str, str]) -> object:
     with transaction() as conn:
         if session_id:
             conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
-    req.write_json({"ok": True}, cookie=cookie_header("", clear=True))
+    req.write_json({"ok": True}, cookie=cookie_header("", clear=True, secure=req.is_https()))
     return _AlreadyWritten()
 
 
@@ -367,6 +379,13 @@ def delete_league_route(req: RequestHandler, params: dict[str, str]) -> dict:
         return delete_league(conn, user["id"], params["league_id"])
 
 
+def leave_league_route(req: RequestHandler, params: dict[str, str]) -> dict:
+    user = req.current_user()
+    with transaction() as conn:
+        ensure_seeded(conn)
+        return leave_league(conn, user["id"], params["league_id"])
+
+
 def join_league_route(req: RequestHandler, params: dict[str, str]) -> dict:
     user = req.current_user()
     code = req.read_json().get("code")
@@ -464,6 +483,7 @@ ROUTES: list[tuple[str, str, RouteHandler]] = [
     ("GET", r"/api/leagues", leagues),
     ("POST", r"/api/leagues", create_league_route),
     ("DELETE", r"/api/leagues/(?P<league_id>[^/]+)", delete_league_route),
+    ("DELETE", r"/api/leagues/(?P<league_id>[^/]+)/membership", leave_league_route),
     ("POST", r"/api/leagues/(?P<league_id>[^/]+)/join", join_league_route),
     ("PATCH", r"/api/leagues/(?P<league_id>[^/]+)/profile", update_league_profile_route),
     ("PATCH", r"/api/leagues/(?P<league_id>[^/]+)/settings", settings_route),

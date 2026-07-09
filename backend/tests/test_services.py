@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from backend.chalked_backend import services
+from backend.chalked_backend.server import cookie_header
 from backend.chalked_backend.storage import upload_image
 from backend.chalked_backend.db import init_db, transaction
 from backend.chalked_backend.providers import GameInfo, Player
@@ -19,6 +20,7 @@ from backend.chalked_backend.services import (
     ensure_active_slate,
     ensure_seeded,
     join_league,
+    leave_league,
     leaderboard,
     login,
     player_stat_value,
@@ -80,6 +82,27 @@ class ServiceTests(unittest.TestCase):
             with self.assertRaises(ApiError) as ctx:
                 update_settings(conn, guest["id"], league["id"], {"bankroll": 500})
             self.assertEqual(ctx.exception.status, 403)
+
+    def test_member_can_leave_league_and_clear_their_data(self):
+        with transaction(self.db_path) as conn:
+            ensure_seeded(conn)
+            owner = create_user(conn, {"handle": "leaveowner", "password": "secret123"})
+            guest = create_user(conn, {"handle": "leaver", "password": "secret123"})
+            league = create_league(conn, owner["id"], {"name": "Leave League", "code": "LEAVE"})
+            join_league(conn, guest["id"], league["id"])
+            slate = ensure_active_slate(conn, league["id"])
+            create_pick(conn, guest["id"], league["id"], {"matchup_id": slate["matchups"][0]["id"], "side": "a", "stake": 10})
+
+            result = leave_league(conn, guest["id"], league["id"])
+
+            self.assertEqual(result["left"], league["id"])
+            self.assertIsNone(conn.execute("SELECT 1 FROM memberships WHERE league_id = ? AND user_id = ?", (league["id"], guest["id"])).fetchone())
+            self.assertIsNone(conn.execute("SELECT 1 FROM standings WHERE league_id = ? AND user_id = ?", (league["id"], guest["id"])).fetchone())
+            self.assertIsNone(conn.execute("SELECT 1 FROM picks WHERE league_id = ? AND user_id = ?", (league["id"], guest["id"])).fetchone())
+
+            with self.assertRaises(ApiError) as owner_leave:
+                leave_league(conn, owner["id"], league["id"])
+            self.assertEqual(owner_leave.exception.status, 400)
 
     def test_pick_uses_league_limits(self):
         with transaction(self.db_path) as conn:
@@ -165,6 +188,28 @@ class ServiceTests(unittest.TestCase):
             confirm_password_reset(conn, {"token": token, "new_password": "newsecret123"})
             public, _ = login(conn, {"login": "mailme", "password": "newsecret123"})
             self.assertEqual(public["handle"], "mailme")
+
+    def test_cookie_security_can_follow_request_scheme(self):
+        old_public = os.environ.get("CHALKED_PUBLIC_URL")
+        old_secure = os.environ.get("CHALKED_COOKIE_SECURE")
+        try:
+            os.environ["CHALKED_PUBLIC_URL"] = "https://playchalked.com"
+            os.environ.pop("CHALKED_COOKIE_SECURE", None)
+
+            local_cookie = cookie_header("local-session", secure=False)
+            prod_cookie = cookie_header("prod-session", secure=True)
+
+            self.assertNotIn("; Secure", local_cookie)
+            self.assertIn("; Secure", prod_cookie)
+        finally:
+            if old_public is None:
+                os.environ.pop("CHALKED_PUBLIC_URL", None)
+            else:
+                os.environ["CHALKED_PUBLIC_URL"] = old_public
+            if old_secure is None:
+                os.environ.pop("CHALKED_COOKIE_SECURE", None)
+            else:
+                os.environ["CHALKED_COOKIE_SECURE"] = old_secure
 
     def test_activity_feed_records_league_events(self):
         with transaction(self.db_path) as conn:
