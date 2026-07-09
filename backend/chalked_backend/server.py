@@ -43,6 +43,7 @@ from .services import (
     profile,
     public_user,
     refresh_active_slate,
+    recent_slates,
     remove_pick,
     require_member,
     logout_other_sessions,
@@ -508,6 +509,13 @@ def slate_route(req: RequestHandler, params: dict[str, str]) -> dict:
         return {"slate": ensure_active_slate(conn, params["league_id"])}
 
 
+def slates_route(req: RequestHandler, params: dict[str, str]) -> dict:
+    user = req.current_user()
+    with transaction() as conn:
+        ensure_seeded(conn)
+        return recent_slates(conn, user["id"], params["league_id"])
+
+
 def refresh_slate_route(req: RequestHandler, params: dict[str, str]) -> dict:
     user = req.current_user()
     with transaction() as conn:
@@ -614,6 +622,7 @@ ROUTES: list[tuple[str, str, RouteHandler]] = [
     ("PATCH", r"/api/leagues/(?P<league_id>[^/]+)/profile", update_league_profile_route),
     ("PATCH", r"/api/leagues/(?P<league_id>[^/]+)/settings", settings_route),
     ("GET", r"/api/leagues/(?P<league_id>[^/]+)/slate", slate_route),
+    ("GET", r"/api/leagues/(?P<league_id>[^/]+)/slates", slates_route),
     ("POST", r"/api/leagues/(?P<league_id>[^/]+)/slate/refresh", refresh_slate_route),
     ("GET", r"/api/leagues/(?P<league_id>[^/]+)/picks", picks_route),
     ("POST", r"/api/leagues/(?P<league_id>[^/]+)/picks", pick_route),

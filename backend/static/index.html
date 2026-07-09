@@ -1297,19 +1297,9 @@ async function confirmRefreshSlate(){
   try{
     if(API_MODE){
       const leagueId = L().id;
-      const data = await apiFetch(`/api/leagues/${leagueId}/slate/refresh`, {method:'POST', body:'{}'});
+      await apiFetch(`/api/leagues/${leagueId}/slate/refresh`, {method:'POST', body:'{}'});
       closeRefreshSlate();
       leagueLoadCache.delete(leagueId);
-      const l = S.leagues.find(x=>x.id===leagueId);
-      if(l && data.slate){
-        Object.assign(l, {
-          week:data.slate.week,
-          phase:data.slate.status === 'open' ? 'open' : 'resolved',
-          lockTime:Date.parse(data.slate.locks_at),
-          matchups:data.slate.matchups.map(mapApiMatchup),
-          picks:[]
-        });
-      }
       await apiLoadLeague(leagueId, true);
     } else {
       const l = L();
@@ -1392,6 +1382,19 @@ function renderSlate(){
   if(chip) chip.textContent = l.phase==='open' ? 'Real MLB player pool' : 'Slate settled';
   const refreshBtn = $('#refreshSlateBtn');
   if(refreshBtn) refreshBtn.classList.toggle('hide', !isOwner(l) || l.phase !== 'open');
+  if(l.slates?.length > 1){
+    const tabs = document.createElement('div');
+    tabs.className = 'alias-card';
+    tabs.style.gridColumn = '1/-1';
+    tabs.style.display = 'flex';
+    tabs.style.gap = '8px';
+    tabs.style.flexWrap = 'wrap';
+    tabs.innerHTML = l.slates.map(s=>`<button class="btn ${s.id===l.selectedSlateId?'gold':'ghost'}" onclick="selectSlate('${s.id}')">${esc(s.status==='open'?'Current':'Review')} Week ${s.week}</button>`).join('');
+    if(l.phase !== 'open'){
+      tabs.innerHTML += `<button class="btn" onclick="showSlateDamage()">See the damage</button>`;
+    }
+    g.appendChild(tabs);
+  }
   if(!l.matchups.length){
     const ownerCopy = isOwner(l) ? 'Use Refresh today to rebuild from the latest MLB schedule.' : 'The league owner can refresh from the latest MLB schedule.';
     g.innerHTML = `<div class="empty" style="grid-column:1/-1"><b>No matchups on this slate yet</b>${ownerCopy}</div>`;
@@ -1400,12 +1403,22 @@ function renderSlate(){
   l.matchups.forEach(m => g.appendChild(card(m)));
 }
 
+function selectSlate(id){
+  const l = L();
+  const s = l?.slates?.find(x=>x.id===id);
+  if(!s) return;
+  applySlateView(l, s);
+  refresh();
+}
+
 function fmtGameTime(iso){
   if(!iso) return 'Game time TBA';
   return new Date(iso).toLocaleString([], {weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
 }
 function gameStatusText(m){
   const g = m.game || {};
+  if(m.resolved) return 'Final';
+  if((g.live_state || '').toLowerCase() === 'waiting') return 'Waiting for other game';
   if(g.is_live) return 'Live game';
   return `${g.status || 'Scheduled'} - ${fmtGameTime(g.start)}`;
 }
@@ -1414,8 +1427,9 @@ function playerGame(m, side){
 }
 function playerLiveLine(m, side){
   const g = playerGame(m, side);
-  if(g.is_live) return `${g.inning || 'Live'} - ${m.liveStats?.[side] || 0} ${m.unit}`;
-  if(g.is_locked) return 'Locked';
+  if(g.is_live) return `${g.inning || 'Live'}`;
+  if((g.live_state || '').toLowerCase() === 'final') return 'Final';
+  if(g.is_locked) return g.status && g.status !== 'Scheduled' ? g.status : 'Locked';
   return '';
 }
 function sideName(m, side){
@@ -1427,9 +1441,14 @@ function sideColor(side){
 }
 function eligibilityTag(m, side){
   const info = m.playerInfo?.[side]?.eligibility || {};
+  const g = playerGame(m, side);
+  const stat = Number(m.liveStats?.[side] || 0);
+  if(m.resolved || g.is_live || g.is_locked || stat > 0){
+    return `<span class="elig-tag confirmed">${Number.isInteger(stat) ? stat : stat.toFixed(1)} ${esc(m.unit)}</span>`;
+  }
   const confidence = info.confidence || '';
   if(!confidence) return '';
-  const label = info.role === 'probable_starting_pitcher' ? 'probable SP' : confidence === 'team_scheduled' ? 'scheduled' : confidence;
+  const label = info.role === 'probable_starting_pitcher' ? 'SP today' : confidence === 'team_scheduled' ? 'plays today' : confidence;
   return `<span class="elig-tag ${esc(confidence)}" title="${esc(info.reason || '')}">${esc(label)}</span>`;
 }
 function matchupLockMs(m){
@@ -1827,6 +1846,24 @@ function startNextWeek(){
 }
 
 /* ---------- reveal overlay ---------- */
+function showSlateDamage(){
+  const l = L();
+  if(!l) return;
+  let net = 0;
+  const rows = (l.picks || []).map(p=>{
+    const m = l.matchups.find(x=>x.id===p.matchupId);
+    const won = m && p.side === m.winner;
+    const value = Number(p.payout ?? (won ? Math.round(p.stake * p.multAtLock) : -p.stake));
+    net += value;
+    return {
+      txt:`${sideName(m || {}, p.side)} ${won?'WIN':'LOSS'}`,
+      sub:m ? `${p.stake} @ ${p.multAtLock.toFixed(2)}x - ${m.actualA ?? 0} to ${m.actualB ?? 0} ${m.unit}` : `${p.stake} pts`,
+      net:value
+    };
+  });
+  showReveal(net, rows);
+}
+
 function showReveal(net, rows){
   $('#rvTitle').textContent = `Week ${L().week} - Results`;
   const box = $('#rvRows');
@@ -2220,7 +2257,7 @@ function mapLeague(l){
     memberCount:l.member_count, settings:camelSettings(l.settings), playoffs:l.playoffs,
     myProfile:l.my_profile || {},
     week:1, phase:'open', lockTime:Date.now()+3600000,
-    matchups:[], fakePicks:[], picks:[],
+    matchups:[], fakePicks:[], picks:[], slates:[], selectedSlateId:null,
     user:{bankTotal:l.settings.bankroll, streak:0, season:0, w:0, l:0, history:[], badges:{}},
     fakes:[], boardRows:[], activity:[], api:l
   };
@@ -2254,6 +2291,27 @@ function mapPick(p){
     id:p.id, matchupId:p.matchup_id, side:p.side, stake:p.stake,
     multAtLock:p.mult_at_lock, payout:p.payout, status:p.status
   };
+}
+
+function mapApiSlate(s){
+  return {
+    id:s.id,
+    week:s.week,
+    phase:s.status === 'open' ? 'open' : 'resolved',
+    status:s.status,
+    lockTime:Date.parse(s.locks_at),
+    matchups:(s.matchups || []).map(mapApiMatchup),
+    picks:(s.picks || []).map(mapPick)
+  };
+}
+
+function applySlateView(l, slate){
+  l.selectedSlateId = slate.id;
+  l.week = slate.week;
+  l.phase = slate.phase;
+  l.lockTime = slate.lockTime;
+  l.matchups = slate.matchups;
+  l.picks = slate.picks;
 }
 
 function applyBoard(l, board){
@@ -2309,19 +2367,25 @@ async function apiLoadLeague(id, force=false){
     try{ await leagueLoadInflight.get(id); }catch(e){}
   }
   const loading = (async()=>{
-  const [slate, picks, board, playoffs, activity] = await Promise.all([
-    apiFetch(`/api/leagues/${id}/slate`),
-    apiFetch(`/api/leagues/${id}/picks`),
+  const [slates, board, playoffs, activity] = await Promise.all([
+    apiFetch(`/api/leagues/${id}/slates`),
     apiFetch(`/api/leagues/${id}/leaderboard`),
     apiFetch(`/api/leagues/${id}/playoffs`),
     apiFetch(`/api/leagues/${id}/activity`)
   ]);
+    const mappedSlates = (slates.slates || []).map(mapApiSlate);
+    const selected = mappedSlates.find(s=>s.id === l.selectedSlateId)
+      || mappedSlates.find(s=>s.id === slates.active_slate_id)
+      || mappedSlates[0]
+      || {id:null, week:1, phase:'open', lockTime:Date.now(), matchups:[], picks:[]};
     const loaded = {
-      week: slate.slate.week,
-      phase: slate.slate.status === 'open' ? 'open' : 'resolved',
-      lockTime: Date.parse(slate.slate.locks_at),
-      matchups: slate.slate.matchups.map(mapApiMatchup),
-      picks: picks.picks.map(mapPick),
+      slates: mappedSlates,
+      selectedSlateId: selected.id,
+      week: selected.week,
+      phase: selected.phase,
+      lockTime: selected.lockTime,
+      matchups: selected.matchups,
+      picks: selected.picks,
       playoffs,
       activity: activity.events || []
     };

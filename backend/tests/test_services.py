@@ -30,8 +30,10 @@ from backend.chalked_backend.services import (
     request_email_verification,
     request_password_reset,
     record_system_status,
+    recent_slates,
     refresh_active_slate,
     set_user_moderation,
+    settle_matchup_picks,
     settle_due_slates,
     admin_overview,
     update_profile,
@@ -156,6 +158,44 @@ class ServiceTests(unittest.TestCase):
 
             self.assertEqual(second["status"], "open")
             self.assertNotEqual(second["id"], first["id"])
+
+    def test_matchup_settlement_updates_standings_before_slate_settles(self):
+        with transaction(self.db_path) as conn:
+            ensure_seeded(conn)
+            user = create_user(conn, {"handle": "instant", "password": "secret123"})
+            league = create_league(conn, user["id"], {"name": "Instant League", "code": "INSTANT"})
+            slate = ensure_active_slate(conn, league["id"])
+            matchup_id = slate["matchups"][0]["id"]
+            create_pick(conn, user["id"], league["id"], {"matchup_id": matchup_id, "side": "a", "stake": 50})
+            conn.execute(
+                "UPDATE matchups SET status = 'settled', winner_side = 'a', actual_a = 5, actual_b = 2 WHERE id = ?",
+                (matchup_id,),
+            )
+
+            settle_matchup_picks(conn, matchup_id)
+
+            standing = conn.execute("SELECT * FROM standings WHERE league_id = ? AND user_id = ?", (league["id"], user["id"])).fetchone()
+            pick = conn.execute("SELECT * FROM picks WHERE matchup_id = ?", (matchup_id,)).fetchone()
+            current_slate = conn.execute("SELECT * FROM slates WHERE id = ?", (slate["id"],)).fetchone()
+            self.assertEqual(pick["status"], "settled")
+            self.assertEqual(standing["wins"], 1)
+            self.assertGreater(standing["season"], 0)
+            self.assertEqual(current_slate["status"], "open")
+
+    def test_recent_slates_returns_previous_review_and_current_slate(self):
+        with transaction(self.db_path) as conn:
+            ensure_seeded(conn)
+            user = create_user(conn, {"handle": "reviewer", "password": "secret123"})
+            league = create_league(conn, user["id"], {"name": "Review League", "code": "REVIEW"})
+            first = ensure_active_slate(conn, league["id"])
+            conn.execute("UPDATE slates SET status = 'settled' WHERE id = ?", (first["id"],))
+
+            data = recent_slates(conn, user["id"], league["id"])
+
+            statuses = {s["id"]: s["status"] for s in data["slates"]}
+            self.assertIn(first["id"], statuses)
+            self.assertIn("open", statuses.values())
+            self.assertEqual(statuses[first["id"]], "settled")
 
     def test_username_changes_do_not_create_old_login_aliases(self):
         with transaction(self.db_path) as conn:

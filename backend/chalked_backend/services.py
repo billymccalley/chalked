@@ -1615,6 +1615,35 @@ def slate_dict(conn: sqlite3.Connection, slate: sqlite3.Row) -> dict:
     }
 
 
+def recent_slates(conn: sqlite3.Connection, user_id: str, league_id: str, limit: int = 4) -> dict:
+    require_member(conn, user_id, league_id)
+    ensure_active_slate(conn, league_id)
+    rows = conn.execute(
+        """
+        SELECT * FROM slates
+        WHERE league_id = ?
+        ORDER BY week DESC, created_at DESC
+        LIMIT ?
+        """,
+        (league_id, limit),
+    ).fetchall()
+    slates = []
+    for row in rows:
+        if row["status"] == "open":
+            hydrate_slate_games(conn, row["id"])
+            sync_slate_stats(conn, row["id"])
+            row = conn.execute("SELECT * FROM slates WHERE id = ?", (row["id"],)).fetchone()
+        item = slate_dict(conn, row)
+        picks = conn.execute(
+            "SELECT * FROM picks WHERE user_id = ? AND league_id = ? AND slate_id = ? ORDER BY created_at",
+            (user_id, league_id, row["id"]),
+        ).fetchall()
+        item["picks"] = [row_to_dict(p) for p in picks]
+        slates.append(item)
+    active = next((s for s in slates if s["status"] == "open"), slates[0] if slates else None)
+    return {"active_slate_id": active["id"] if active else None, "slates": slates}
+
+
 def matchup_dict(conn: sqlite3.Connection, m: sqlite3.Row) -> dict:
     totals = side_totals(conn, m["id"])
     now = datetime.now(timezone.utc)
@@ -1764,10 +1793,12 @@ def sync_slate_stats(conn: sqlite3.Connection, slate_id: str, force: bool = Fals
         state_b = (feed_b or {}).get("live_state") or row["live_state_b"] or row["live_state"] or "Preview"
         inning_a = (feed_a or {}).get("inning") or row["inning_a"]
         inning_b = (feed_b or {}).get("inning") or row["inning_b"]
-        status = status_a if state_a.lower() == "live" else status_b if state_b.lower() == "live" else (feed_a or feed_b or {}).get("status") or row["game_status"] or "Scheduled"
-        live_state = live_state_for_feeds(feed_a, feed_b, row["live_state"])
+        final_a = is_final_game(status_a, state_a)
+        final_b = is_final_game(status_b, state_b)
+        status = combined_matchup_status(status_a, state_a, status_b, state_b, row["game_status"])
+        live_state = combined_matchup_live_state(status_a, state_a, status_b, state_b, row["live_state"])
         inning = inning_a if state_a.lower() == "live" else inning_b if state_b.lower() == "live" else (feed_a or feed_b or {}).get("inning")
-        final = bool(feed_a and feed_b and is_final_game(status_a, state_a) and is_final_game(status_b, state_b))
+        final = bool(feed_a and feed_b and final_a and final_b)
         synced_at = now_iso()
         winner = None
         if final:
@@ -1816,6 +1847,8 @@ def sync_slate_stats(conn: sqlite3.Connection, slate_id: str, force: bool = Fals
                 row["id"],
             ),
         )
+        if final:
+            settle_matchup_picks(conn, row["id"])
     open_matchups = conn.execute(
         "SELECT COUNT(*) c FROM matchups WHERE slate_id = ? AND status = 'open'",
         (slate_id,),
@@ -1844,6 +1877,7 @@ def settle_due_slates(conn: sqlite3.Connection, force: bool = True) -> dict:
         after = conn.execute("SELECT status FROM slates WHERE id = ?", (slate["id"],)).fetchone()
         if before == "open" and after and after["status"] == "settled":
             settled += 1
+            ensure_active_slate(conn, slate["league_id"])
     return {"checked": checked, "settled": settled}
 
 
@@ -1894,17 +1928,43 @@ def live_state_for_feeds(feed_a: dict | None, feed_b: dict | None, fallback: str
     return str(states[0] if states else fallback or "Preview")
 
 
-def settle_slate_from_matchups(conn: sqlite3.Connection, slate_id: str) -> dict:
-    slate = conn.execute("SELECT * FROM slates WHERE id = ?", (slate_id,)).fetchone()
-    if not slate or slate["status"] != "open":
-        return {"slate_id": slate_id, "net_by_user": {}}
+def combined_matchup_status(status_a: str, state_a: str, status_b: str, state_b: str, fallback: str | None) -> str:
+    final_a = is_final_game(status_a, state_a)
+    final_b = is_final_game(status_b, state_b)
+    if final_a and final_b:
+        return "Final"
+    if str(state_a).lower() == "live" or str(state_b).lower() == "live":
+        return "Live"
+    if final_a or final_b:
+        return "Waiting for other game"
+    return fallback or status_a or status_b or "Scheduled"
+
+
+def combined_matchup_live_state(status_a: str, state_a: str, status_b: str, state_b: str, fallback: str | None) -> str:
+    final_a = is_final_game(status_a, state_a)
+    final_b = is_final_game(status_b, state_b)
+    if final_a and final_b:
+        return "Final"
+    if str(state_a).lower() == "live" or str(state_b).lower() == "live":
+        return "Live"
+    if final_a or final_b:
+        return "Waiting"
+    return fallback or state_a or state_b or "Preview"
+
+
+def settle_matchup_picks(conn: sqlite3.Connection, matchup_id: str) -> dict:
+    m = conn.execute("SELECT * FROM matchups WHERE id = ?", (matchup_id,)).fetchone()
+    if not m or m["status"] != "settled" or not m["winner_side"]:
+        return {"settled": 0, "net_by_user": {}}
+    slate = conn.execute("SELECT * FROM slates WHERE id = ?", (m["slate_id"],)).fetchone()
     league = conn.execute("SELECT * FROM leagues WHERE id = ?", (slate["league_id"],)).fetchone()
     net_by_user: dict[str, int] = {}
-    for p in conn.execute("SELECT * FROM picks WHERE slate_id = ? AND status = 'open'", (slate_id,)).fetchall():
-        m = conn.execute("SELECT * FROM matchups WHERE id = ?", (p["matchup_id"],)).fetchone()
-        if not m or m["status"] != "settled" or not m["winner_side"]:
-            continue
+    settled = 0
+    for p in conn.execute("SELECT * FROM picks WHERE matchup_id = ? AND status = 'open'", (matchup_id,)).fetchall():
         standing = conn.execute("SELECT * FROM standings WHERE league_id = ? AND user_id = ?", (slate["league_id"], p["user_id"])).fetchone()
+        if not standing:
+            conn.execute("INSERT OR IGNORE INTO standings (league_id, user_id, updated_at) VALUES (?, ?, ?)", (slate["league_id"], p["user_id"], now_iso()))
+            standing = conn.execute("SELECT * FROM standings WHERE league_id = ? AND user_id = ?", (slate["league_id"], p["user_id"])).fetchone()
         won = p["side"] == m["winner_side"]
         if won:
             streak_bonus = min(1 + (league["streak_step"] / 100) * standing["streak"], 1 + league["streak_cap"] / 100)
@@ -1915,7 +1975,7 @@ def settle_slate_from_matchups(conn: sqlite3.Connection, slate_id: str) -> dict:
                 "UPDATE standings SET season = season + ?, streak = streak + 1, wins = wins + 1, updated_at = ? WHERE league_id = ? AND user_id = ?",
                 (payout, now_iso(), slate["league_id"], p["user_id"]),
             )
-            log_activity(conn, slate["league_id"], p["user_id"], "pick_won", f"Won {payout} pts on a settled pick", {"pick_id": p["id"], "matchup_id": p["matchup_id"]})
+            log_activity(conn, slate["league_id"], p["user_id"], "pick_won", f"Won {payout} pts on {matchup_label(conn, m)}", {"pick_id": p["id"], "matchup_id": p["matchup_id"]})
         else:
             payout = -p["stake"]
             net_by_user[p["user_id"]] = net_by_user.get(p["user_id"], 0) + payout
@@ -1923,8 +1983,42 @@ def settle_slate_from_matchups(conn: sqlite3.Connection, slate_id: str) -> dict:
                 "UPDATE standings SET season = season - ?, streak = 0, losses = losses + 1, updated_at = ? WHERE league_id = ? AND user_id = ?",
                 (p["stake"], now_iso(), slate["league_id"], p["user_id"]),
             )
-            log_activity(conn, slate["league_id"], p["user_id"], "pick_lost", f"Lost {p['stake']} pts on a settled pick", {"pick_id": p["id"], "matchup_id": p["matchup_id"]})
+            log_activity(conn, slate["league_id"], p["user_id"], "pick_lost", f"Lost {p['stake']} pts on {matchup_label(conn, m)}", {"pick_id": p["id"], "matchup_id": p["matchup_id"]})
         conn.execute("UPDATE picks SET payout = ?, status = 'settled' WHERE id = ?", (payout, p["id"]))
+        settled += 1
+    return {"settled": settled, "net_by_user": net_by_user}
+
+
+def matchup_label(conn: sqlite3.Connection, matchup: sqlite3.Row) -> str:
+    row = conn.execute(
+        """
+        SELECT pa.name a_name, pb.name b_name
+        FROM matchups m
+        JOIN players pa ON pa.id = m.player_a_id
+        JOIN players pb ON pb.id = m.player_b_id
+        WHERE m.id = ?
+        """,
+        (matchup["id"],),
+    ).fetchone()
+    if not row:
+        return "a settled pick"
+    if matchup["winner_side"] == "tie":
+        return f"{row['a_name']} / {row['b_name']} tie"
+    return row["a_name"] if matchup["winner_side"] == "a" else row["b_name"]
+
+
+def settle_slate_from_matchups(conn: sqlite3.Connection, slate_id: str) -> dict:
+    slate = conn.execute("SELECT * FROM slates WHERE id = ?", (slate_id,)).fetchone()
+    if not slate or slate["status"] != "open":
+        return {"slate_id": slate_id, "net_by_user": {}}
+    league = conn.execute("SELECT * FROM leagues WHERE id = ?", (slate["league_id"],)).fetchone()
+    net_by_user: dict[str, int] = {}
+    for m in conn.execute("SELECT * FROM matchups WHERE slate_id = ? AND status = 'settled'", (slate_id,)).fetchall():
+        settled = settle_matchup_picks(conn, m["id"])
+        for user_id, net in settled["net_by_user"].items():
+            net_by_user[user_id] = net_by_user.get(user_id, 0) + net
+    for p in conn.execute("SELECT user_id, COALESCE(SUM(payout),0) net FROM picks WHERE slate_id = ? AND status = 'settled' GROUP BY user_id", (slate_id,)).fetchall():
+        net_by_user.setdefault(p["user_id"], int(p["net"] or 0))
     conn.execute("UPDATE slates SET status = 'settled' WHERE id = ?", (slate_id,))
     settle_playoff_round(conn, league, slate, net_by_user)
     return {"slate_id": slate_id, "net_by_user": net_by_user}
