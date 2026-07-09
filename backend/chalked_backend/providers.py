@@ -174,7 +174,7 @@ class MlbScheduleProvider:
                 status = (game.get("status") or {}).get("detailedState") or "Scheduled"
                 coded = (game.get("status") or {}).get("abstractGameState") or "Preview"
                 linescore = game.get("linescore") or {}
-                inning = linescore.get("currentInningOrdinal")
+                inning = format_inning(linescore)
                 away_abbr = away.get("abbreviation") or away.get("name") or ""
                 home_abbr = home.get("abbreviation") or home.get("name") or ""
                 probable_pitchers = []
@@ -250,10 +250,18 @@ class MlbLiveFeedProvider:
         return {
             "status": status.get("detailedState") or "Scheduled",
             "live_state": status.get("abstractGameState") or "Preview",
-            "inning": linescore.get("currentInningOrdinal"),
+            "inning": format_inning(linescore),
             "players": players,
             "lineups": lineups,
         }
+
+
+def format_inning(linescore: dict) -> str | None:
+    ordinal = linescore.get("currentInningOrdinal")
+    half = linescore.get("inningHalf")
+    if ordinal and half:
+        return f"{half} {ordinal}"
+    return ordinal
 
 
 class MlbGameLogProvider:

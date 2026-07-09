@@ -341,9 +341,12 @@ a{color:var(--blue)}
 
 .mc-detail{margin-top:12px;border-top:1px dashed var(--line);padding-top:12px;font-size:13px;color:var(--muted);animation:fadeIn .25s ease}
 .mc-detail .blurb{margin-bottom:10px;color:var(--text)}
-.last5{display:flex;gap:5px;align-items:center;margin:4px 0 8px;flex-wrap:wrap}
-.last5 .l5{font-family:var(--mono);font-size:11.5px;padding:2px 7px;border-radius:6px;background:var(--panel2);border:1px solid var(--line)}
-.last5 .who{font-size:11.5px;min-width:86px;color:var(--faint)}
+.last5{display:grid;grid-template-columns:minmax(96px,132px) minmax(0,1fr);gap:7px;align-items:center;margin:7px 0;flex-wrap:wrap}
+.last5 .l5-row{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.last5 .l5{font-family:var(--mono);font-size:11.5px;padding:3px 7px;border-radius:7px;background:var(--panel2);border:1px solid var(--line)}
+.last5 .l5.latest{color:#171006;background:var(--gold);border-color:rgba(255,197,61,.7);font-weight:900}
+.last5 .who{font-size:11.5px;color:var(--faint)}
+.last5-note{font-size:11px;color:var(--faint);margin:3px 0 8px;font-family:var(--mono)}
 .comm-line{font-family:var(--mono);font-size:11.5px}
 @keyframes fadeIn{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
 
@@ -1428,6 +1431,8 @@ function playerGame(m, side){
 function playerLiveLine(m, side){
   const g = playerGame(m, side);
   if(g.is_live) return `${g.inning || 'Live'}`;
+  const startsAt = Date.parse(g.start || 0);
+  if(startsAt && startsAt > Date.now()) return `Starts ${new Date(startsAt).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}`;
   if((g.live_state || '').toLowerCase() === 'final') return 'Final';
   if(g.is_locked) return g.status && g.status !== 'Scheduled' ? g.status : 'Locked';
   return '';
@@ -1581,13 +1586,16 @@ function renderStakeArea(el, m){
 function renderDetailArea(el, m){
   const A = PLAYERS[m.a], B = PLAYERS[m.b];
   const {A:sA,B:sB,Tie:sT,T} = sideTotals(m);
-  const last5 = vals => vals?.length ? vals.map(v=>`<span class="l5">${Number.isInteger(v)?v:v.toFixed(1)}</span>`).join('') : '<span class="l5">No recent log yet</span>';
+  const last5 = vals => vals?.length
+    ? vals.map((v,i)=>`<span class="l5 ${i===0?'latest':''}" title="${i===0?'Most recent game':`${i+1} games ago`}">${Number.isInteger(v)?v:v.toFixed(1)}</span>`).join('')
+    : '<span class="l5">No recent log yet</span>';
   const auditTime = m.audit?.stat_synced_at ? new Date(m.audit.stat_synced_at).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : 'not synced yet';
   const settledTime = m.audit?.settled_at ? ` - settled ${new Date(m.audit.settled_at).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})}` : '';
   el.querySelector('[data-detail]').innerHTML = `
     <div class="blurb">${m.blurb}</div>
-    <div class="last5"><span class="who">${A.name.split(' ').pop()} last 5 ${m.unit}:</span>${last5(m.lastA)}</div>
-    <div class="last5"><span class="who">${B.name.split(' ').pop()} last 5 ${m.unit}:</span>${last5(m.lastB)}</div>
+    <div class="last5-note">Last 5 games are shown newest to oldest. Gold = most recent game.</div>
+    <div class="last5"><span class="who">${A.name.split(' ').pop()} ${m.unit}</span><span class="l5-row">${last5(m.lastA)}</span></div>
+    <div class="last5"><span class="who">${B.name.split(' ').pop()} ${m.unit}</span><span class="l5-row">${last5(m.lastB)}</span></div>
     <div class="comm-line">Stats source: ${esc(m.audit?.source || 'MLB StatsAPI')} - last checked ${esc(auditTime)}${esc(settledTime)}</div>
     <div class="comm-line">Community pool: ${T} pts - ${sA} on ${A.name.split(' ').pop()} / ${sT} on tie / ${sB} on ${B.name.split(' ').pop()}</div>`;
 }
@@ -2003,13 +2011,20 @@ const OB = [
 ];
 let obI = 0;
 function showOnboard(){ obI = 0; obPaint(); $('#onboard').classList.remove('hide'); }
+function onboardingKey(){ return `chalked_onboarded_${apiUser?.id || 'demo'}`; }
 function obPaint(){
   $('#obBody').innerHTML = `<h3>${OB[obI].h}</h3><p>${OB[obI].p}</p>`;
   $('#obDots').innerHTML = OB.map((_,i)=>`<span class="stepdot ${i===obI?'on':''}"></span>`).join('');
   $('#obNext').textContent = obI===OB.length-1 ? "Let's go" : 'Next';
 }
 function obNext(){
-  if(++obI >= OB.length){ $('#onboard').classList.add('hide'); S.onboarded = true; DB.save(S); return; }
+  if(++obI >= OB.length){
+    $('#onboard').classList.add('hide');
+    S.onboarded = true;
+    try{ localStorage.setItem(onboardingKey(), '1'); }catch(e){}
+    DB.save(S);
+    return;
+  }
   obPaint();
 }
 
@@ -2411,6 +2426,11 @@ function apiEnterApp(){
   window.scrollTo(0,0);
   go('leagues');
   startApiUiLoops();
+  try{
+    if(apiUser?.id && !localStorage.getItem(onboardingKey())){
+      setTimeout(showOnboard, 350);
+    }
+  }catch(e){}
 }
 
 function askLogout(){

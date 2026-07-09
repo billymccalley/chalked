@@ -1364,26 +1364,26 @@ def seeded_market_points(stat_key: str, last5_a: list[float], last5_b: list[floa
     closeness = max(0.0, 1.0 - abs(edge) / max(avg, 1.0))
     edge_strength = min(1.0, abs(edge) / max(avg, 1.0))
 
-    favorite_share = 0.48 + edge_strength * 0.20 + random.uniform(-0.055, 0.055)
-    favorite_share = max(0.43, min(0.72, favorite_share))
-    tie_share = 0.055 + closeness * 0.12 + random.uniform(-0.025, 0.025)
+    favorite_share = 0.53 + edge_strength * 0.28 + random.uniform(-0.025, 0.025)
+    favorite_share = max(0.50, min(0.82, favorite_share))
+    tie_share = 0.04 + closeness * 0.10 + random.uniform(-0.012, 0.012)
     if stat_key in {"HR", "BB", "XBH", "H", "R", "RBI"}:
-        tie_share += 0.025
-    tie_share = max(0.045, min(0.24, tie_share))
+        tie_share += 0.018
+    tie_share = max(0.035, min(0.18, tie_share))
 
     side_pool = max(0.70, 1.0 - tie_share)
     if abs(edge) < avg * 0.04:
-        a_share = side_pool * (0.5 + random.uniform(-0.05, 0.05))
+        a_share = side_pool * (0.5 + random.uniform(-0.025, 0.025))
     elif edge > 0:
         a_share = side_pool * favorite_share
     else:
         a_share = side_pool * (1.0 - favorite_share)
     b_share = side_pool - a_share
 
-    total = random.randint(850, 1700)
-    a = max(120, round(total * a_share))
-    b = max(120, round(total * b_share))
-    tie = max(40, round(total * tie_share))
+    total = random.randint(950, 1700)
+    a = max(90, round(total * a_share))
+    b = max(90, round(total * b_share))
+    tie = max(35, round(total * tie_share))
     return {"a": a, "b": b, "tie": tie}
 
 
