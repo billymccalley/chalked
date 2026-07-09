@@ -1,0 +1,9 @@
+.git
+.agents
+.codex
+outputs
+work
+backend/__pycache__
+backend/chalked_backend/__pycache__
+backend/tests/__pycache__
+backend/chalked.sqlite3

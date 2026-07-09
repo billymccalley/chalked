@@ -1,0 +1,49 @@
+services:
+  - type: web
+    name: chalked-web
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m backend.chalked_backend.server
+    healthCheckPath: /api/health
+    envVars:
+      - key: CHALKED_ENV
+        value: production
+      - key: CHALKED_HOST
+        value: 0.0.0.0
+      - key: CHALKED_DB
+        value: /data/chalked.sqlite3
+      - key: CHALKED_PUBLIC_URL
+        sync: false
+      - key: CHALKED_ALLOWED_ORIGINS
+        sync: false
+      - key: CHALKED_CRON_SECRET
+        generateValue: true
+      - key: CHALKED_MAIL_FROM
+        sync: false
+      - key: CHALKED_SMTP_HOST
+        sync: false
+      - key: CHALKED_SMTP_PORT
+        value: 587
+      - key: CHALKED_SMTP_USERNAME
+        sync: false
+      - key: CHALKED_SMTP_PASSWORD
+        sync: false
+      - key: CHALKED_SMTP_TLS
+        value: 1
+    disk:
+      name: chalked-data
+      mountPath: /data
+      sizeGB: 1
+
+  - type: cron
+    name: chalked-settlement
+    runtime: python
+    schedule: "*/5 * * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m backend.chalked_backend.jobs settle
+    envVars:
+      - key: CHALKED_PUBLIC_URL
+        sync: false
+      - key: CHALKED_CRON_SECRET
+        sync: false

@@ -1,0 +1,2583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chalked - Fade the Crowd. Get Paid.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   FACE OFF - design tokens
+   bg: night-game navy - sides: coral red vs cool blue
+   value color: amber - market numbers set in mono
+   ============================================================ */
+:root{
+  --bg:#0B0F14; --panel:#141B24; --panel2:#0F151D; --line:#243040;
+  --text:#E9EEF5; --muted:#8C97A8; --faint:#5B6675;
+  --red:#FF5A48; --red-dim:#3A1712; --blue:#2ED98A; --blue-dim:#0E2A1D;
+  --gold:#FFC53D; --green:#2ED98A; --loss:#FF6B6B;
+  --disp:'Inter',sans-serif; --body:'Inter',sans-serif; --mono:'JetBrains Mono',monospace;
+  --rad:14px; --rad-s:9px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.45;
+  background-image:radial-gradient(1100px 480px at 75% -8%, rgba(46,217,138,.08), transparent 60%),
+                   radial-gradient(900px 420px at 8% -5%, rgba(255,90,72,.07), transparent 55%),
+                   linear-gradient(180deg, #0C1118 0%, #0B0F14 340px);background-attachment:fixed;}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input{font-family:inherit}
+input[type=file]{color:var(--muted);font-size:12.5px}
+.file-input{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
+.image-upload{display:flex;align-items:center;gap:10px;border:1px dashed var(--line);background:var(--panel);border-radius:10px;padding:10px;color:var(--muted);cursor:pointer;transition:border-color .15s,color .15s}
+.image-upload:hover{border-color:var(--gold);color:var(--text)}
+.image-upload .pic{width:42px;height:42px;border-radius:10px;background:var(--panel2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:800;color:var(--gold);overflow:hidden;flex:0 0 auto}
+.image-upload .pic img{width:100%;height:100%;object-fit:cover}
+.image-upload b{display:block;font-size:13px;color:var(--text)}
+.image-upload small{display:block;font-size:11.5px;color:var(--faint);margin-top:1px}
+a{color:var(--blue)}
+.mono{font-family:var(--mono)}
+.hide{display:none!important}
+
+/* ---------- Landing ---------- */
+#landing{max-width:1040px;margin:0 auto;padding:38px 20px 80px}
+.brand{font-family:var(--disp);font-weight:800;font-size:21px;letter-spacing:-.03em;display:flex;align-items:center}
+.brand i{font-style:normal;color:var(--gold)}
+.hero{margin:48px 0 20px;text-align:left;display:grid;grid-template-columns:minmax(0,1.04fr) minmax(320px,.86fr);gap:34px;align-items:center}
+.hero-copy{min-width:0}
+.hero-kicker{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);border:1px solid rgba(255,197,61,.24);background:rgba(255,197,61,.08);border-radius:99px;padding:6px 10px;margin-bottom:16px}
+.hero h1{font-family:var(--disp);font-weight:900;line-height:.98;font-size:clamp(44px,7vw,78px);letter-spacing:-.045em;color:#fff}
+.hero h1 .l1{color:#fff}
+.hero h1 .l2{background:linear-gradient(100deg,#FFE38A,#FFC53D 48%,#FFFFFF 110%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{max-width:620px;margin-top:18px;color:#B7C1D0;font-size:17px}
+.hero-stats{display:flex;gap:9px;flex-wrap:wrap;margin-top:22px}
+.hero-stats span{font-family:var(--mono);font-size:12px;color:var(--muted);border:1px solid var(--line);background:rgba(15,21,29,.76);border-radius:99px;padding:7px 10px}
+.hero-stats b{color:#fff}
+.hero-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:28px}
+.hero-actions .cta{margin-top:0}
+.hero-link{font-family:var(--disp);font-weight:700;color:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 18px;background:rgba(20,27,36,.68)}
+.hero-link:hover{border-color:rgba(255,197,61,.34)}
+.demo-card{margin:0;background:linear-gradient(180deg,#1B2430,#111821);border:1px solid rgba(255,197,61,.18);border-radius:18px;padding:16px;box-shadow:0 22px 70px rgba(0,0,0,.3)}
+.demo-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.demo-label{font-family:var(--mono);font-size:11px;color:var(--gold);letter-spacing:.08em;text-transform:uppercase}
+.demo-time{font-family:var(--mono);font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:5px 8px;background:var(--panel2)}
+.demo-vs{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-bottom:12px;font-family:var(--disp);font-weight:800;font-size:17px;letter-spacing:-.01em}
+.demo-player{border:1px solid var(--line);background:rgba(9,13,19,.35);border-radius:13px;padding:12px;min-height:92px}
+.demo-player small{display:block;color:var(--muted);font-family:var(--mono);font-size:11px;margin-top:3px}
+.demo-vs .dA{color:#fff}.demo-vs .dB{color:#fff}
+.demo-vs .vs{color:var(--gold);font-size:12px;letter-spacing:.14em;text-align:center}
+.demo-note{margin-top:10px;display:flex;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:12px;color:var(--muted);flex-wrap:wrap}
+.demo-note b{color:var(--gold)}
+.demo-foot{margin-top:13px;border-top:1px dashed rgba(139,159,184,.18);padding-top:12px;color:var(--muted);font-size:13px}
+.explain{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:28px}
+.explain .ex{background:linear-gradient(180deg,#151D28,#101720);border:1px solid var(--line);border-radius:14px;padding:18px;min-height:154px}
+.ex .num{width:28px;height:28px;border-radius:9px;background:rgba(255,197,61,.12);border:1px solid rgba(255,197,61,.28);display:flex;align-items:center;justify-content:center;color:var(--gold);font-family:var(--mono);font-weight:900;margin-bottom:12px}
+.ex h3{font-family:var(--disp);font-weight:700;font-size:16.5px;letter-spacing:-.01em;margin-bottom:8px}
+.ex p{color:var(--muted);font-size:14px}
+.ex .k{color:var(--gold);font-family:var(--mono);font-size:12.5px}
+.cta{display:inline-block;background:linear-gradient(135deg,#FFD65A,#FFAB1A);color:#1A1200;font-family:var(--disp);font-weight:800;
+  letter-spacing:-.01em;font-size:17px;padding:14px 32px;border-radius:12px;box-shadow:0 6px 22px rgba(255,180,40,.22);transition:transform .15s ease, box-shadow .15s ease}
+.cta:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(255,180,40,.32)}
+.auth-card{max-width:680px;margin:30px 0 8px;background:linear-gradient(180deg,rgba(28,37,50,.98),rgba(13,18,26,.98));
+  border:1px solid rgba(255,197,61,.24);border-radius:16px;padding:18px;box-shadow:0 18px 50px rgba(0,0,0,.28),0 0 0 1px rgba(255,197,61,.06)}
+.auth-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:14px;border-bottom:1px solid rgba(139,159,184,.14);padding-bottom:14px}
+.auth-mark{display:flex;align-items:center;gap:10px}
+.auth-logo{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#FFD65A,#FFAB1A);color:#171006;display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:900;font-size:21px;box-shadow:0 10px 26px rgba(255,180,40,.22)}
+.auth-title{font-family:var(--disp);font-weight:800;font-size:20px;letter-spacing:-.025em;color:#fff}
+.auth-title i{font-style:normal;color:var(--gold)}
+.auth-sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+.auth-badge{font-family:var(--mono);font-size:11px;color:var(--gold);border:1px solid rgba(255,197,61,.28);background:rgba(255,197,61,.08);border-radius:99px;padding:5px 8px;white-space:nowrap}
+.auth-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.auth-field{display:flex;flex-direction:column;gap:5px}
+.auth-field label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#F3F6FA;font-weight:800}
+.auth-field input{width:100%;background:#0C121A;border:1px solid #2A3749;color:#fff;border-radius:10px;padding:10px 11px;font-size:13.5px;outline:none;transition:border-color .15s, box-shadow .15s}
+.auth-field input::placeholder{color:#667386}
+.auth-field input:focus{border-color:rgba(255,197,61,.7);box-shadow:0 0 0 3px rgba(255,197,61,.12)}
+.password-wrap{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px}
+.password-wrap .pw-toggle{font-family:var(--mono);font-size:11px;font-weight:800;color:var(--gold);border:1px solid rgba(255,197,61,.26);background:rgba(255,197,61,.08);border-radius:10px;padding:0 10px;min-width:58px}
+.password-wrap .pw-toggle:hover{border-color:rgba(255,197,61,.55);background:rgba(255,197,61,.14)}
+.auth-actions{display:flex;align-items:center;gap:8px;margin-top:13px;flex-wrap:wrap}
+.auth-actions .btn.gold{padding:10px 18px}
+.auth-msg{color:var(--muted);font-size:12.5px;margin-left:auto;max-width:310px}
+.auth-foot{margin-top:12px;color:var(--faint);font-size:12px}
+.auth-foot b{color:var(--gold)}
+
+/* ---------- App shell ---------- */
+#app{max-width:1060px;margin:0 auto;padding:0 16px 96px}
+.topbar{position:sticky;top:0;z-index:40;background:rgba(11,15,20,.94);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);
+  padding:12px max(18px, calc(50vw - 514px))}
+.top-right{display:flex;align-items:center;gap:14px}
+.streak-pill{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:13px;font-weight:700;color:var(--gold);
+  background:linear-gradient(135deg,rgba(255,197,61,.12),rgba(255,140,40,.06));border:1px solid rgba(255,197,61,.25);padding:4px 10px;border-radius:99px;box-shadow:0 0 14px rgba(255,197,61,.1)}
+.bank-pill{font-family:var(--mono);font-size:13px;font-weight:700;background:var(--panel);border:1px solid var(--line);
+  padding:4px 12px;border-radius:99px}
+.bank-pill b{color:var(--green)}
+.league-pill{display:flex;align-items:center;gap:7px;font-family:var(--disp);font-size:13px;font-weight:700;background:var(--panel);
+  border:1px solid var(--line);padding:4px 12px;border-radius:99px;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.league-pill .crown{color:var(--gold);font-size:13px}
+#logoutBtn{transition:border-color .15s,color .15s,background .15s,box-shadow .15s}
+#logoutBtn:hover{border-color:rgba(255,107,107,.65);color:var(--loss);background:rgba(255,107,107,.10);box-shadow:0 0 18px rgba(255,107,107,.08)}
+
+.bankbar{position:sticky;top:53px;z-index:39;background:var(--panel2);border:1px solid var(--line);border-top:none;
+  border-radius:0 0 var(--rad) var(--rad);padding:10px 14px;display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;justify-content:space-between}
+.bankbar .bb-left{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.bb-stat{font-size:13px;color:var(--muted)}
+.bb-stat b{font-family:var(--mono);color:var(--text);font-size:14px}
+.bb-meter{flex:1;min-width:120px;max-width:260px;height:7px;background:#1B2430;border-radius:99px;overflow:hidden}
+.bb-meter i{display:block;height:100%;background:linear-gradient(90deg,var(--green),var(--gold));border-radius:99px;transition:width .35s ease}
+.bb-count{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+.bb-count b{color:var(--text)}
+.decay-warn{font-size:12px;color:var(--gold)}
+
+/* ---------- Ticker ---------- */
+.ticker{overflow:hidden;border:1px solid var(--line);border-radius:99px;background:var(--panel2);margin:14px 0 4px;height:32px;position:relative}
+.ticker-track{display:inline-flex;gap:34px;white-space:nowrap;align-items:center;height:32px;padding-left:100%;
+  animation:tick 40s linear infinite;font-size:12.5px;color:var(--muted)}
+.ticker-track .t-user{color:var(--text);font-weight:600}
+.ticker-track .t-red{color:var(--red)} .ticker-track .t-blue{color:var(--blue)}
+.ticker-track .t-amt{font-family:var(--mono);color:var(--gold)}
+@keyframes tick{to{transform:translateX(-100%)}}
+
+/* ---------- Tabs / nav ---------- */
+.tabs{display:flex;gap:6px;margin:16px 0 18px;border-bottom:1px solid var(--line);padding-bottom:0}
+.tab{font-family:var(--disp);font-weight:600;font-size:14.5px;letter-spacing:-.005em;display:flex;align-items:center;gap:7px;
+  color:var(--muted);padding:8px 13px 10px;border-bottom:2px solid transparent;transition:color .15s}
+.tab svg{width:15px;height:15px;stroke-width:2}
+.tab:hover{color:var(--text)}
+.tab.on{color:var(--text);border-bottom-color:var(--gold)}
+.tab .dot{display:inline-block;min-width:18px;height:18px;line-height:18px;border-radius:99px;background:var(--gold);color:#161001;
+  font-family:var(--mono);font-size:11px;font-weight:700;text-align:center;margin-left:6px;vertical-align:1px}
+
+/* ---------- Leagues ---------- */
+.league-hero{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:stretch;margin-bottom:16px}
+.league-current{background:linear-gradient(180deg,#18202C,#121821);border:1px solid var(--line);border-radius:16px;padding:18px}
+.league-hero-main{display:flex;gap:15px;align-items:flex-start}
+.league-avatar-lg,.league-avatar-sm{display:flex;align-items:center;justify-content:center;overflow:hidden;background:linear-gradient(140deg,#FFC53D,#253246);color:#111821;font-family:var(--disp);font-weight:800;flex:none}
+.league-avatar-lg{width:74px;height:74px;border-radius:18px;font-size:24px;box-shadow:0 12px 30px rgba(0,0,0,.18)}
+.league-avatar-sm{width:42px;height:42px;border-radius:12px;font-size:14px}
+.league-avatar-lg img,.league-avatar-sm img{width:100%;height:100%;object-fit:cover}
+.league-kicker{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--faint);font-weight:700;margin-bottom:5px}
+.league-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:var(--disp);font-weight:800;font-size:27px;letter-spacing:-.025em}
+.owner-crown{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 7px;border-radius:99px;background:rgba(255,197,61,.12);
+  border:1px solid rgba(255,197,61,.35);color:var(--gold);font-size:10px;font-family:var(--mono);font-weight:800;letter-spacing:.04em;gap:4px}
+.emoji{font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif;letter-spacing:0}
+.league-copy{color:var(--muted);max-width:620px;margin-top:8px}
+.league-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.league-chip{font-family:var(--mono);font-size:12px;color:var(--muted);border:1px solid var(--line);background:var(--panel2);border-radius:99px;padding:5px 9px}
+.league-chip b{color:var(--text)}
+.chip{font-family:var(--mono);font-size:12px;color:var(--muted);border:1px solid var(--line);background:var(--panel2);border-radius:99px;padding:5px 9px}
+.chip.live{color:var(--green);border-color:rgba(46,217,138,.45);background:rgba(46,217,138,.08)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form-field{display:flex;flex-direction:column;gap:5px}
+.form-field label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);font-weight:700}
+.form-field input,.form-field select,.form-field textarea{width:100%;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:9px;padding:9px 10px;font-size:13px}
+.form-field textarea{min-height:70px;resize:vertical}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px dashed var(--line);padding-top:10px;margin-top:10px;font-size:13px;color:var(--muted)}
+.profile-editor,.playoff-panel{background:linear-gradient(180deg,#17202B,#121821);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:16px}
+.profile-head{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.profile-avatar{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(140deg,#FFC53D,#243040);font-family:var(--disp);font-weight:800;color:#121821;overflow:hidden}
+.profile-avatar img{width:100%;height:100%;object-fit:cover}
+.alias-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-top:12px}
+.alias-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+.bracket{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-top:12px}
+.bracket-round{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.bracket-round h4{font-size:13px;color:var(--gold);margin-bottom:9px}
+.bracket-game{border:1px solid var(--line);border-radius:10px;padding:8px;font-size:12.5px;color:var(--muted);background:var(--panel2)}
+.bracket-game b{color:var(--text)}
+.seed-line{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0}
+.seed-line + .seed-line{border-top:1px dashed var(--line)}
+.seed-line.win{color:var(--green)}
+.seed-line.out{opacity:.55}
+.bubble-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:12px}
+.join-card{background:var(--panel2);border:1px solid var(--line);border-radius:16px;padding:16px}
+.join-card h3{font-family:var(--disp);font-size:16px;letter-spacing:-.01em;margin-bottom:9px}
+.join-code{display:flex;gap:8px;margin-top:10px}
+.join-code input{min-width:0;flex:1;background:var(--panel);border:1px solid var(--line);color:var(--text);font-family:var(--mono);font-size:13px;
+  border-radius:9px;padding:9px 10px;text-transform:uppercase}
+.league-layout{display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:16px;align-items:start}
+.league-layout .section-h:first-child{margin-top:0}
+.league-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.league-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;transition:border-color .15s, transform .15s, box-shadow .15s}
+.league-card.active{border-color:rgba(255,197,61,.55);box-shadow:0 0 0 1px rgba(255,197,61,.16)}
+.league-card:hover{transform:translateY(-1px);border-color:#34445B}
+.league-card h3{display:flex;align-items:center;gap:7px;font-family:var(--disp);font-size:16px;letter-spacing:-.01em;margin-bottom:5px}
+.league-card p{color:var(--muted);font-size:13px;min-height:38px}
+.league-card .league-meta{margin-top:11px}
+.league-card .actions{display:flex;gap:8px;margin-top:12px}
+.league-card-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
+.league-card-head h3{margin-bottom:3px}
+.league-card-head p{min-height:auto}
+.league-dash{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:18px}
+.league-stat-mini,.mini-standings,.mini-bars{background:rgba(9,13,19,.32);border:1px solid rgba(139,159,184,.18);border-radius:13px;padding:11px;min-height:86px}
+.league-stat-mini span,.mini-title{display:block;color:var(--faint);font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:7px}
+.league-stat-mini b{display:block;font-family:var(--disp);font-size:22px;letter-spacing:-.02em}
+.league-stat-mini small{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+.mini-bars,.mini-standings{grid-column:span 2}
+.mini-bar{display:grid;grid-template-columns:46px minmax(0,1fr) 28px;gap:8px;align-items:center;font-family:var(--mono);font-size:11.5px;color:var(--muted);margin:6px 0}
+.mini-bar-track{height:8px;border-radius:99px;background:#0D131B;overflow:hidden;border:1px solid rgba(139,159,184,.12)}
+.mini-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--gold),#2ED98A)}
+.mini-row{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:8px;align-items:center;font-size:12.5px;color:var(--muted);padding:5px 0}
+.mini-row + .mini-row{border-top:1px dashed rgba(139,159,184,.15)}
+.mini-row b{color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini-row .pts{font-family:var(--mono);font-weight:700}
+.activity-list{display:flex;flex-direction:column;gap:8px}
+.activity-item{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:9px;align-items:center;padding:8px 0;border-top:1px dashed rgba(139,159,184,.15)}
+.activity-item:first-child{border-top:none;padding-top:2px}
+.activity-icon{width:28px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:800;color:var(--gold);background:rgba(255,197,61,.08);border:1px solid rgba(255,197,61,.22)}
+.activity-copy{min-width:0}
+.activity-copy b{display:block;color:var(--text);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.activity-copy span{display:block;color:var(--muted);font-size:12.2px;line-height:1.25;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.activity-time{font-family:var(--mono);font-weight:700;font-size:11.5px;color:var(--faint)}
+.settings-panel{background:linear-gradient(180deg,#17202B,#121821);border:1px solid var(--line);border-radius:16px;padding:16px;position:sticky;top:112px}
+.settings-panel h3{font-family:var(--disp);font-size:17px;letter-spacing:-.01em;margin-bottom:4px}
+.settings-note{font-size:12.5px;color:var(--muted);margin-bottom:12px}
+.setting-row{padding:10px 0;border-top:1px dashed var(--line)}
+.setting-row:first-of-type{border-top:none}
+.setting-head{display:flex;justify-content:space-between;gap:10px;font-size:13px;margin-bottom:7px}
+.setting-head b{font-family:var(--mono);color:var(--gold)}
+.setting-row input[type=range]{width:100%;accent-color:var(--gold)}
+.setting-row small{display:block;color:var(--faint);font-size:11.5px;margin-top:4px}
+.league-locked{opacity:.55}
+
+/* ---------- Slate ---------- */
+.slate-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.slate-head h2{font-family:var(--disp);font-weight:800;font-size:23px;letter-spacing:-.02em}
+.slate-head h2 span{color:var(--faint);font-weight:600}
+.btn{font-family:var(--disp);font-weight:600;font-size:13.5px;letter-spacing:-.005em;
+  border-radius:10px;padding:9px 16px;border:1px solid var(--line);background:linear-gradient(180deg,#1A222E,#131A24);transition:all .15s}
+.btn:hover{border-color:var(--faint)}
+.btn.gold{background:linear-gradient(135deg,#FFD65A,#FFAB1A);color:#1A1200;border-color:transparent;font-weight:700;box-shadow:0 4px 16px rgba(255,180,40,.18)}
+.btn.gold:hover{box-shadow:0 8px 24px rgba(255,180,40,.3)}
+.btn.ghost{background:transparent}
+.btn.danger{border-color:rgba(255,107,107,.45);color:var(--loss);background:rgba(255,107,107,.07)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.match-card{background:linear-gradient(180deg,#18202C 0%,#121821 100%);border:1px solid var(--line);border-radius:16px;padding:16px 16px 14px;position:relative;overflow:hidden;transition:transform .18s ease, border-color .18s ease, box-shadow .18s ease}
+.match-card:hover{transform:translateY(-2px);border-color:#31435C;box-shadow:0 12px 32px rgba(0,0,0,.35)}
+.match-card.committed{border-color:rgba(255,197,61,.4);box-shadow:0 0 0 1px rgba(255,197,61,.18), 0 6px 24px rgba(255,180,40,.07)}
+.match-card.live{border-color:rgba(46,217,138,.55);box-shadow:0 0 0 1px rgba(46,217,138,.18),0 14px 34px rgba(46,217,138,.07)}
+.game-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:-4px 0 10px;font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.game-line .live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 12px rgba(46,217,138,.8)}
+.live-stat{font-family:var(--mono);font-size:11.5px;color:var(--gold)}
+.mc-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px}
+.stat-chip{font-family:var(--mono);font-size:11.5px;font-weight:600;letter-spacing:.04em;color:var(--muted);
+  border:1px solid var(--line);border-radius:99px;padding:3px 10px;text-transform:uppercase}
+.stat-chip b{color:var(--text)}
+.detail-btn{font-size:12px;color:var(--faint);text-decoration:underline dotted}
+.detail-btn:hover{color:var(--text)}
+
+.mc-players{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}
+.pside{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:10px 6px;border-radius:var(--rad-s);
+  border:1.5px solid transparent;transition:border-color .15s, background .15s;cursor:pointer}
+.pside:hover{background:rgba(255,255,255,.025)}
+.pside.selA{border-color:var(--red);background:var(--red-dim)}
+.pside.selB{border-color:var(--blue);background:var(--blue-dim)}
+.pside.selT,.tie-pick.selT{border-color:var(--gold);background:rgba(255,197,61,.09)}
+.avatar{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-family:var(--disp);font-weight:800;font-size:19px;letter-spacing:.02em;color:#fff;position:relative}
+.avatar img{position:absolute;inset:0;width:100%;height:100%;border-radius:50%;object-fit:cover}
+.pside .pname{font-family:var(--disp);font-weight:700;font-size:15.5px;line-height:1.12;letter-spacing:-.015em}
+.pside .pteam{font-size:11.5px;color:var(--muted)}
+.pside .pavg{font-family:var(--mono);font-size:11px;color:var(--faint)}
+.p-live-line{min-height:14px;font-family:var(--mono);font-size:11px;color:var(--gold)}
+.elig-tag{font-family:var(--mono);font-size:10.5px;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:2px 7px;text-transform:uppercase}
+.elig-tag.confirmed{color:var(--green);border-color:rgba(46,217,138,.35);background:rgba(46,217,138,.07)}
+.elig-tag.team_scheduled{color:var(--gold);border-color:rgba(255,197,61,.35);background:rgba(255,197,61,.07)}
+.elig-tag.demo{color:var(--faint)}
+.mult{font-family:var(--mono);font-weight:700;font-size:13px;padding:2px 9px;border-radius:7px;border:1px solid var(--line)}
+.mult.hot{color:var(--gold);border-color:rgba(255,197,61,.45);background:rgba(255,197,61,.08);box-shadow:0 0 12px rgba(255,197,61,.14)}
+.mult.warm{color:var(--text);border-color:var(--faint)}
+.mult.chalk{color:var(--muted)}
+.vs-col{display:flex;flex-direction:column;align-items:center;gap:4px}
+.vs-col .vs{font-family:var(--disp);font-weight:800;font-size:15px;color:var(--faint);letter-spacing:.18em}
+.tie-pick{border:1px solid var(--line);border-radius:10px;padding:7px 8px;text-align:center;min-width:72px;cursor:pointer;background:var(--panel2);transition:border-color .15s,background .15s}
+.tie-pick:hover{border-color:var(--gold)}
+.tie-pick b{display:block;font-size:11px;color:var(--gold);letter-spacing:.08em}
+.tie-pick small{display:block;margin-top:2px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+
+/* signature: the tug bar */
+.tug{margin:12px 2px 4px;height:12px;box-shadow:inset 0 1px 3px rgba(0,0,0,.4);border-radius:99px;display:flex;overflow:hidden;background:#1B2430;position:relative}
+.tug .tA{background:linear-gradient(90deg,#D8402F,var(--red));transition:width .5s cubic-bezier(.5,0,.2,1)}
+.tug .tB{background:linear-gradient(90deg,var(--blue),#1FA468);flex:1;transition:width .5s cubic-bezier(.5,0,.2,1)}
+.tug-labels{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;font-family:var(--mono);font-size:11px;color:var(--muted);margin:4px 4px 0}
+.tug-labels span:nth-child(2){color:var(--gold)}
+.tug-labels span:last-child{text-align:right}
+
+.mc-stake{margin-top:12px;border-top:1px dashed var(--line);padding-top:12px}
+.stake-row{display:flex;align-items:center;gap:10px}
+.stake-row input[type=range]{flex:1;accent-color:var(--gold)}
+.stake-row input[type=number]{width:74px;background:var(--panel2);border:1px solid var(--line);color:var(--text);
+  font-family:var(--mono);font-size:13px;padding:6px 8px;border-radius:8px;text-align:right}
+.stake-row input[type=number]:focus{outline:1px solid var(--gold)}
+.stake-meta{display:flex;justify-content:space-between;align-items:center;margin-top:9px;gap:8px}
+.payout{font-size:12.5px;color:var(--muted)}
+.payout b{font-family:var(--mono);color:var(--green);font-size:14px}
+.commit{background:linear-gradient(135deg,#FFD65A,#FFAB1A);color:#1A1200;font-family:var(--disp);font-weight:700;
+  letter-spacing:-.005em;font-size:13.5px;padding:8px 16px;border-radius:9px;box-shadow:0 3px 12px rgba(255,180,40,.16);transition:transform .12s}
+.commit:active{transform:scale(.96)}
+.commit:disabled{opacity:.35}
+.pick-locked{display:flex;justify-content:space-between;align-items:center;font-size:13px}
+.pick-locked .lk{font-family:var(--mono);font-size:12.5px;color:var(--gold)}
+.rm{color:var(--faint);font-size:12px;text-decoration:underline}
+.rm:hover{color:var(--loss)}
+.hint-pick{font-size:12px;color:var(--faint);margin-top:8px;text-align:center}
+
+.mc-detail{margin-top:12px;border-top:1px dashed var(--line);padding-top:12px;font-size:13px;color:var(--muted);animation:fadeIn .25s ease}
+.mc-detail .blurb{margin-bottom:10px;color:var(--text)}
+.last5{display:flex;gap:5px;align-items:center;margin:4px 0 8px;flex-wrap:wrap}
+.last5 .l5{font-family:var(--mono);font-size:11.5px;padding:2px 7px;border-radius:6px;background:var(--panel2);border:1px solid var(--line)}
+.last5 .who{font-size:11.5px;min-width:86px;color:var(--faint)}
+.comm-line{font-family:var(--mono);font-size:11.5px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+
+/* per-matchup chat */
+.mc-chat{margin-top:12px;border-top:1px dashed var(--line);padding-top:12px;animation:fadeIn .25s ease}
+.chat-msgs{max-height:170px;overflow-y:auto;display:flex;flex-direction:column;gap:7px;padding-right:4px}
+.msg{font-size:13px;line-height:1.4}
+.msg .mname{font-weight:700;margin-right:6px}
+.chat-in{display:flex;gap:8px;margin-top:10px}
+.chat-in input{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:8px 12px;border-radius:9px;font-size:13px}
+.chat-in input:focus{outline:1px solid var(--gold)}
+
+/* resolved card states */
+.match-card.won{border-color:rgba(46,217,138,.45);box-shadow:0 0 26px rgba(46,217,138,.09)}
+.match-card.lost{border-color:rgba(255,107,107,.35);box-shadow:0 0 26px rgba(255,107,107,.07)}
+.result-strip{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px;display:flex;justify-content:space-between;align-items:center;font-size:13px}
+.result-strip .rs-stat{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+.result-strip .net{font-family:var(--mono);font-weight:700}
+.net.pos{color:var(--green)} .net.neg{color:var(--loss)} .net.zero{color:var(--faint)}
+.winner-tag{font-family:var(--disp);text-transform:uppercase;font-weight:800;font-size:13px;letter-spacing:.06em;padding:2px 8px;border-radius:6px}
+.winner-tag.A{color:var(--red);background:var(--red-dim)} .winner-tag.B{color:var(--blue);background:var(--blue-dim)}
+
+/* ---------- My Picks ---------- */
+.section-h{font-family:var(--disp);font-weight:800;font-size:19px;letter-spacing:-.02em;margin:8px 0 12px}
+.pickrow{background:var(--panel);border:1px solid var(--line);border-radius:var(--rad-s);padding:12px 14px;display:flex;
+  justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.pickrow .pr-main{font-weight:600}
+.pickrow .pr-main .sideA{color:var(--red)} .pickrow .pr-main .sideB{color:var(--blue)}
+.pickrow .pr-sub{font-size:12px;color:var(--muted)}
+.pickrow .pr-num{font-family:var(--mono);font-size:13px;text-align:right}
+.pickrow .pr-num b{color:var(--green)}
+.week-block{margin-bottom:22px}
+.week-block h4{font-family:var(--disp);font-weight:600;font-size:13.5px;color:var(--muted);margin-bottom:8px;display:flex;justify-content:space-between}
+.empty{border:1px dashed var(--line);border-radius:var(--rad);padding:34px 20px;text-align:center;color:var(--muted)}
+.empty b{display:block;font-family:var(--disp);font-weight:700;font-size:16px;color:var(--text);letter-spacing:-.01em;margin-bottom:6px}
+
+/* ---------- Leaderboard ---------- */
+table.board{width:100%;border-collapse:collapse;background:linear-gradient(180deg,#17202B,#121821);border:1px solid var(--line);border-radius:var(--rad);overflow:hidden}
+.board th{font-family:var(--disp);text-transform:uppercase;font-size:11px;letter-spacing:.09em;color:var(--faint);
+  text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);font-weight:600}
+.board td{padding:11px 12px;border-bottom:1px solid #1B2430;font-size:14px}
+.board tr:last-child td{border-bottom:none}
+.board .me td{background:rgba(255,197,61,.05)}
+.board .rank{font-family:var(--mono);color:var(--faint);width:36px}
+.board .pts{font-family:var(--mono);font-weight:700}
+.board .pts.pos{color:var(--green)} .board .pts.neg{color:var(--loss)}
+.board .acc,.board .stk{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.u-ava{width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  font-family:var(--disp);font-weight:800;font-size:12px;color:#fff;margin-right:8px;vertical-align:middle}
+
+/* ---------- Profile ---------- */
+.prof-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.pstat{background:linear-gradient(180deg,#18202C,#121821);border:1px solid var(--line);border-radius:16px;padding:16px}
+.pstat .lab{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.pstat .val{font-family:var(--mono);font-weight:700;font-size:24px;margin-top:4px}
+.pstat .val.gold{color:var(--gold)} .pstat .val.green{color:var(--green)}
+.badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.badge{background:var(--panel);border:1px solid var(--line);border-radius:var(--rad);padding:14px;display:flex;gap:12px;align-items:center}
+.badge.off{opacity:.38;filter:grayscale(.6)}
+.badge .bico{font-size:26px}
+.badge .bname{font-family:var(--disp);font-weight:700;font-size:14px;letter-spacing:-.01em}
+.badge .bdesc{font-size:12px;color:var(--muted)}
+
+/* ---------- Modals / overlays ---------- */
+.overlay{position:fixed;inset:0;background:rgba(5,8,12,.82);backdrop-filter:blur(5px);z-index:100;display:flex;align-items:center;justify-content:center;padding:18px}
+.modal{background:linear-gradient(180deg,#1A2330,#131A24);border:1px solid var(--line);border-radius:16px;max-width:440px;width:100%;padding:26px 24px;text-align:center;animation:pop .25s cubic-bezier(.3,1.4,.5,1)}
+@keyframes pop{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
+.modal h3{font-family:var(--disp);font-weight:800;font-size:20px;letter-spacing:-.02em;margin-bottom:10px}
+.modal p{color:var(--muted);font-size:14.5px;margin-bottom:8px}
+.modal .k{font-family:var(--mono);color:var(--gold);font-size:13px}
+.modal .steps{display:flex;gap:6px;justify-content:center;margin:16px 0 6px}
+.modal .stepdot{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.modal .stepdot.on{background:var(--gold)}
+.modal .btn{margin-top:12px}
+
+/* results reveal */
+#reveal .modal{max-width:480px;text-align:left}
+.rv-row{display:flex;justify-content:space-between;align-items:center;padding:10px 4px;border-bottom:1px dashed var(--line);
+  opacity:0;transform:translateY(8px);transition:opacity .4s ease, transform .4s ease}
+.rv-row.in{opacity:1;transform:none}
+.rv-row .rv-m{font-size:13.5px;font-weight:600}
+.rv-row .rv-m small{display:block;color:var(--muted);font-weight:400;font-size:11.5px;font-family:var(--mono)}
+.rv-row .rv-net{font-family:var(--mono);font-weight:700;font-size:15px}
+.rv-total{margin-top:16px;text-align:center;opacity:0;transition:opacity .5s ease}
+.rv-total.in{opacity:1}
+.rv-total .lab{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.rv-total .big{font-family:var(--mono);font-weight:700;font-size:42px}
+
+/* toast */
+#toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--panel);
+  border:1px solid var(--gold);color:var(--text);padding:10px 20px;border-radius:99px;font-size:14px;z-index:120;
+  opacity:0;pointer-events:none;transition:all .3s ease}
+#toast.show{opacity:1;transform:translateX(-50%)}
+
+/* ---------- responsive ---------- */
+@media (max-width:900px){ .league-hero,.league-layout{grid-template-columns:1fr} .league-dash{grid-template-columns:1fr 1fr} .settings-panel{position:static} }
+@media (max-width:840px){ .hero{grid-template-columns:1fr}.grid{grid-template-columns:1fr} .prof-grid{grid-template-columns:1fr 1fr} .explain{grid-template-columns:1fr} }
+@media (max-width:620px){ .league-hero-main{flex-direction:column}.league-dash{grid-template-columns:1fr}.mini-bars,.mini-standings{grid-column:auto}.auth-head{flex-direction:column}.auth-grid{grid-template-columns:1fr}.auth-msg{margin-left:0;max-width:none}.hero-actions{align-items:stretch}.hero-actions .cta,.hero-link{width:100%;text-align:center}.demo-vs{grid-template-columns:1fr}.demo-vs .vs{text-align:left} }
+@media (max-width:560px){
+  .tabs{overflow-x:auto;scrollbar-width:none}
+  .tab{font-size:15px;padding:8px 10px 10px;white-space:nowrap}
+  .slate-head h2{font-size:24px}
+  .bankbar{top:49px}
+  .league-title{font-size:23px}
+  .top-right{gap:7px}
+  .league-pill{max-width:150px}
+  .board th:nth-child(5),.board td:nth-child(5){display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+
+</style>
+</head>
+<body>
+
+<!-- ================= LANDING ================= -->
+<div id="landing">
+  <div class="brand">Chalked<i>.</i></div>
+  <div class="hero">
+    <div class="hero-copy">
+      <div class="hero-kicker">Real MLB duels. Real league markets.</div>
+      <h1><span class="l1">Pick the player.</span><br><span class="l2">Fade the crowd.</span></h1>
+      <p>Chalked turns daily MLB matchups into clean 1v1 player markets. Join a league, stake your weekly bankroll, and get paid more when you are right before everyone else catches up.</p>
+      <div class="hero-stats">
+        <span><b>1v1</b> player duels</span>
+        <span><b>Live</b> game locks</span>
+        <span><b>Tie</b> picks included</span>
+        <span><b>League</b> standings</span>
+      </div>
+      <div class="hero-actions">
+        <button class="cta" onclick="enterApp()">Enter Chalked</button>
+        <button class="hero-link" onclick="document.getElementById('authPanel')?.scrollIntoView({behavior:'smooth',block:'center'})">Create account</button>
+      </div>
+    </div>
+    <div class="demo-card">
+      <div class="demo-head"><span class="demo-label">Tonight's sample market</span><span class="demo-time">Locks at first pitch</span></div>
+      <div class="demo-vs">
+        <div class="demo-player"><span class="dA">Logan Gilbert</span><small>SEA - SP - Strikeouts</small></div>
+        <span class="vs">VS</span>
+        <div class="demo-player"><span class="dB">Tarik Skubal</span><small>DET - SP - Strikeouts</small></div>
+      </div>
+      <div class="tug"><div class="tA" id="demoTug" style="width:58%"></div><div style="width:9%;background:linear-gradient(90deg,#D9A72E,var(--gold))"></div><div class="tB"></div></div>
+      <div class="demo-note"><span>58% Gilbert -> <b>1.72x</b></span><span>9% tie -> <b>6.00x</b></span><span>33% Skubal -> <b>3.03x</b></span></div>
+      <div class="demo-foot">The crowd sets the price. Your edge is finding the side the room is missing.</div>
+    </div>
+  </div>
+
+  <div class="explain">
+    <div class="ex"><div class="num">1</div><h3>Join real leagues</h3><p>Create or join a league with custom bankrolls, stakes, multipliers, playoffs, invites, and its own leaderboard.</p></div>
+    <div class="ex"><div class="num">2</div><h3>Pick same-day MLB duels</h3><p>Slates use probable starters, confirmed lineups when available, live game locks, player photos, and recent-game stat logs.</p></div>
+    <div class="ex"><div class="num">3</div><h3>Win against the room</h3><p>Your multiplier moves with the league market. Back the player, call the tie, or fade the popular side for a bigger payout.</p></div>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="app" class="hide">
+  <header class="topbar">
+    <div class="brand">Chalked<i>.</i></div>
+    <div class="top-right">
+      <div class="league-pill" id="topLeague"><span class="crown hide" id="topLeagueCrown">OWN</span><span id="topLeagueName">League</span></div>
+      <div class="streak-pill" id="streakPill" title="Current win streak">STK <span id="streakNum">0</span></div>
+      <div class="bank-pill">SZN <b id="seasonPts">0</b></div>
+      <button class="btn ghost hide" id="logoutBtn" style="padding:7px 10px" onclick="askLogout()">Logout</button>
+    </div>
+  </header>
+
+  <div class="bankbar" id="bankbar">
+    <div class="bb-left">
+      <div class="bb-stat" style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10.5h18M16.5 15h.01"/></svg>Bankroll <b id="bankLeft">1000</b><span style="color:var(--faint)"> / </span><b id="bankTotal" style="color:var(--muted)">1000</b></div>
+      <div class="bb-meter"><i id="bankMeter" style="width:100%"></i></div>
+      <div class="bb-stat">Staked <b id="bankStaked">0</b></div>
+    </div>
+    <div>
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" style="vertical-align:-2px"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v4.5l3 2"/></svg>
+      <span class="bb-count" id="lockCount">Locks in -</span>
+      <span class="decay-warn" id="decayWarn"> - bankroll resets to 1,000 every week</span>
+    </div>
+  </div>
+
+  <div class="ticker"><div class="ticker-track" id="tickerTrack"></div></div>
+
+  <nav class="tabs">
+    <button class="tab" data-v="leagues" onclick="go('leagues')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4"/><path d="M7 4h10v6a5 5 0 0 1-10 0V4z"/><path d="M7 6H4.5a2.5 2.5 0 0 0 2.6 4.4M17 6h2.5a2.5 2.5 0 0 1-2.6 4.4"/></svg>Leagues</button>
+    <button class="tab on" data-v="slate" onclick="go('slate')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg>Slate</button>
+    <button class="tab" data-v="picks" onclick="go('picks')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg>My Picks<span class="dot hide" id="pickDot">0</span></button>
+    <button class="tab" data-v="board" onclick="go('board')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v6a5 5 0 0 1-10 0V4z"/><path d="M7 6H4.5a2.5 2.5 0 0 0 2.6 4.4M17 6h2.5a2.5 2.5 0 0 1-2.6 4.4M8.5 21h7M12 15v6"/></svg>Leaderboard</button>
+    <button class="tab" data-v="playoffs" onclick="go('playoffs')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h5v5H6zM13 4h5v5h-5zM6 15h5v5H6zM13 15h5v5h-5z"/><path d="M11 6.5h2M11 17.5h2M15.5 9v6"/></svg>Playoffs</button>
+    <button class="tab" data-v="profile" onclick="go('profile')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5c1.4-3.6 4.5-5.5 7.5-5.5s6.1 1.9 7.5 5.5"/></svg>Profile</button>
+  </nav>
+
+  <main>
+    <section id="view-leagues" class="hide">
+      <div class="league-hero">
+        <div class="league-current">
+          <div class="league-hero-main">
+            <div class="league-avatar-lg" id="leagueAvatarBig">LG</div>
+            <div>
+              <div class="league-kicker">Active league</div>
+              <div class="league-title"><span id="leagueNameBig">League</span><span class="owner-crown hide" id="leagueOwnerBig" title="League owner"><span class="emoji">&#128081;</span> OWN</span></div>
+              <p class="league-copy" id="leagueDesc">Pick a league to load its slate, bankroll rules, market settings, and standings.</p>
+              <div class="league-meta" id="leagueMeta"></div>
+            </div>
+          </div>
+          <div class="league-dash" id="leagueDash"></div>
+        </div>
+        <div class="join-card">
+          <h3>Join or create</h3>
+          <p style="font-size:13px;color:var(--muted)">Join by invite code, browse open leagues, or spin up your own rule set.</p>
+          <div class="join-code">
+            <input id="joinCode" maxlength="12" placeholder="CODE">
+            <button class="btn gold" onclick="joinByCode()">Join</button>
+          </div>
+          <div class="form-field" style="margin-top:12px">
+            <label>League name</label>
+            <input id="newLeagueName" placeholder="My League">
+          </div>
+          <div class="form-field" style="margin-top:8px">
+            <label>League picture upload</label>
+            <input class="file-input" id="newLeagueAvatarFile" type="file" accept="image/*" onchange="uploadToInput(this,'newLeagueAvatar','newLeagueAvatarPic')">
+            <label class="image-upload" for="newLeagueAvatarFile">
+              <span class="pic" id="newLeagueAvatarPic">IMG</span>
+              <span><b>Upload league image</b><small>PNG, JPG, WEBP, or GIF</small></span>
+            </label>
+          </div>
+          <div class="form-field" style="margin-top:8px">
+            <label>League picture URL</label>
+            <input id="newLeagueAvatar" placeholder="/uploads/...">
+          </div>
+          <div class="form-grid" style="margin-top:8px">
+            <div class="form-field"><label>Season weeks</label><input id="newSeasonWeeks" type="number" min="1" max="26" value="10"></div>
+            <div class="form-field"><label>Playoff size</label><select id="newPlayoffSize"><option>4</option><option>6</option><option selected>8</option><option>10</option><option>12</option><option>14</option><option>16</option></select></div>
+          </div>
+          <label class="toggle-row"><span>Enable playoffs</span><input id="newPlayoffsEnabled" type="checkbox" checked></label>
+          <button class="btn" style="width:100%;margin-top:10px" onclick="createLeague()">Create owned league</button>
+        </div>
+      </div>
+
+      <div class="league-layout">
+        <div>
+          <div class="section-h">Your Leagues</div>
+          <div class="league-list" id="leagueList"></div>
+          <div class="section-h" style="margin-top:22px">Open Leagues</div>
+          <div class="league-list" id="openLeagueList"></div>
+        </div>
+        <aside class="settings-panel" id="leagueSettings"></aside>
+      </div>
+    </section>
+
+    <section id="view-slate">
+      <div class="slate-head">
+        <h2>Week <span id="weekNum">1</span> Slate <span id="slateSub">- 8 duels</span></h2>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="chip" id="slateDataChip">Real MLB player pool</span>
+          <button class="btn ghost hide" id="refreshSlateBtn" onclick="askRefreshSlate()">Refresh today</button>
+        </div>
+      </div>
+      <div class="grid" id="slateGrid"></div>
+    </section>
+
+    <section id="view-picks" class="hide">
+      <div class="section-h">This Week</div>
+      <div id="picksNow"></div>
+      <div class="section-h" style="margin-top:26px">History</div>
+      <div id="picksHist"></div>
+    </section>
+
+    <section id="view-board" class="hide">
+      <div class="section-h" id="boardTitle">Season Standings</div>
+      <table class="board">
+        <thead><tr><th></th><th>Manager</th><th>Net Pts</th><th>Win %</th><th>Record</th><th>Streak</th></tr></thead>
+        <tbody id="boardBody"></tbody>
+      </table>
+      <p id="boardNote" style="font-size:12px;color:var(--faint);margin-top:10px">Ranked by cumulative net points inside the active league.</p>
+    </section>
+
+    <section id="view-playoffs" class="hide">
+      <div id="playoffView"></div>
+    </section>
+
+    <section id="view-profile">
+      <div class="section-h">Manager Profile</div>
+      <div id="profileEditor"></div>
+      <div class="prof-grid">
+        <div class="pstat"><div class="lab">Season Net</div><div class="val green" id="pfSeason">0</div></div>
+        <div class="pstat"><div class="lab">Record</div><div class="val" id="pfRecord">0-0</div></div>
+        <div class="pstat"><div class="lab">Accuracy</div><div class="val" id="pfAcc">-</div></div>
+        <div class="pstat"><div class="lab">Streak</div><div class="val gold" id="pfStreak">STK 0</div></div>
+      </div>
+      <div class="section-h" style="font-size:19px">Badges</div>
+      <div class="badges" id="badgeGrid"></div>
+    </section>
+  </main>
+</div>
+
+<!-- onboarding -->
+<div class="overlay hide" id="onboard">
+  <div class="modal">
+    <div id="obBody"></div>
+    <div class="steps" id="obDots"></div>
+    <button class="btn gold" id="obNext" onclick="obNext()">Next</button>
+  </div>
+</div>
+
+<!-- results reveal -->
+<div class="overlay hide" id="reveal">
+  <div class="modal">
+    <h3 id="rvTitle">Week 1 - Results</h3>
+    <div id="rvRows"></div>
+    <div class="rv-total" id="rvTotal"><div class="lab">Net this week</div><div class="big" id="rvNet">+0</div></div>
+    <div style="text-align:center"><button class="btn gold" id="rvClose" onclick="closeReveal()">See the damage</button></div>
+  </div>
+</div>
+
+<!-- delete league confirm -->
+<div class="overlay hide" id="deleteLeagueModal">
+  <div class="modal">
+    <h3>Delete League?</h3>
+    <p>This permanently removes <b id="deleteLeagueName">this league</b>, including its picks, standings, and playoff bracket.</p>
+    <p class="k">This cannot be undone.</p>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:12px">
+      <button class="btn ghost" onclick="closeDeleteLeague()">Cancel</button>
+      <button class="btn danger" onclick="confirmDeleteLeague()">Delete league</button>
+    </div>
+  </div>
+</div>
+
+<!-- logout confirm -->
+<div class="overlay hide" id="logoutModal">
+  <div class="modal">
+    <h3>Log Out?</h3>
+    <p>You will leave this session and return to the login screen.</p>
+    <p class="k">Your leagues, picks, and profile stay saved.</p>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:12px">
+      <button class="btn ghost" onclick="closeLogout()">Stay logged in</button>
+      <button class="btn danger" onclick="confirmLogout()">Log out</button>
+    </div>
+  </div>
+</div>
+
+<!-- refresh slate confirm -->
+<div class="overlay hide" id="refreshSlateModal">
+  <div class="modal">
+    <h3>Refresh Today&apos;s Slate?</h3>
+    <p>This rebuilds the open slate from today&apos;s MLB schedule and clears open picks on this slate.</p>
+    <p class="k">Use this for stale dev slates only.</p>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:12px">
+      <button class="btn ghost" onclick="closeRefreshSlate()">Cancel</button>
+      <button class="btn gold" onclick="confirmRefreshSlate()">Refresh slate</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script>
+/* ============================================================
+   CHALKED - game engine (vanilla JS)
+   Storage: tries localStorage, falls back to in-memory so the
+   file also runs in sandboxed previews. Swap DB.save/load for
+   API calls later - all reads/writes flow through them.
+   ============================================================ */
+const DB = (() => {
+  let mem = null, ok = true;
+  try { localStorage.setItem('__t','1'); localStorage.removeItem('__t'); } catch(e){ ok = false; }
+  return {
+    save(s){ if(ok){ try{ localStorage.setItem('chalked_v1', JSON.stringify(s)); }catch(e){} } mem = s; },
+    load(){ if(ok){ try{ const r = localStorage.getItem('chalked_v1'); if(r) return JSON.parse(r); }catch(e){} } return mem; },
+    wipe(){ if(ok){ try{ localStorage.removeItem('chalked_v1'); }catch(e){} } mem = null; }
+  };
+})();
+
+const $ = s => document.querySelector(s);
+const fmt = n => (n>=0?'+':'') + Math.round(n).toLocaleString();
+const rnd = (a,b) => a + Math.random()*(b-a);
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const clamp = (v,lo,hi) => Math.min(hi, Math.max(lo, v));
+
+/* ---------- real MLB players (avgs are per-week mock projections) ---------- */
+const TEAMCOL = {PIT:'#FDB827',DET:'#FA4616',PHI:'#E81828',BOS:'#BD3039',SEA:'#005C5C',ATL:'#CE1141',
+  NYY:'#1C2841',LAD:'#005A9C',NYM:'#FF5910',KC:'#004687',BAL:'#DF4601',CHC:'#0E3386',CIN:'#C6011F',
+  HOU:'#EB6E1F',AZ:'#A71930',TOR:'#134A8E',MIL:'#12284B',SD:'#2F241D',CLE:'#E31937',SF:'#FD5A1E'};
+const PLAYERS = {
+  skenes:{name:'Paul Skenes',team:'PIT',pos:'SP',grp:'K',mlb:694973}, skubal:{name:'Tarik Skubal',team:'DET',pos:'SP',grp:'K',mlb:669373},
+  wheeler:{name:'Zack Wheeler',team:'PHI',pos:'SP',grp:'K',mlb:554430}, crochet:{name:'Garrett Crochet',team:'BOS',pos:'SP',grp:'K',mlb:676979},
+  gilbert:{name:'Logan Gilbert',team:'SEA',pos:'SP',grp:'K',mlb:669302}, sale:{name:'Chris Sale',team:'ATL',pos:'SP',grp:'K',mlb:519242},
+  judge:{name:'Aaron Judge',team:'NYY',pos:'RF',grp:'TB',mlb:592450}, ohtani:{name:'Shohei Ohtani',team:'LAD',pos:'DH',grp:'TB',mlb:660271},
+  soto:{name:'Juan Soto',team:'NYM',pos:'RF',grp:'OB',mlb:665742}, harper:{name:'Bryce Harper',team:'PHI',pos:'1B',grp:'OB',mlb:547180},
+  witt:{name:'Bobby Witt Jr.',team:'KC',pos:'SS',grp:'SPD',mlb:677951}, elly:{name:'Elly De La Cruz',team:'CIN',pos:'SS',grp:'SPD',mlb:682829},
+  schwarber:{name:'Kyle Schwarber',team:'PHI',pos:'DH',grp:'HR',mlb:656941}, alvarez:{name:'Yordan Alvarez',team:'HOU',pos:'DH',grp:'HR',mlb:670541},
+  gunnar:{name:'Gunnar Henderson',team:'BAL',pos:'SS',grp:'TB',mlb:683002}, tucker:{name:'Kyle Tucker',team:'CHC',pos:'RF',grp:'TB',mlb:663656},
+  acuna:{name:'Ronald Acuna Jr.',team:'ATL',pos:'RF',grp:'H',mlb:660670}, carroll:{name:'Corbin Carroll',team:'AZ',pos:'CF',grp:'H',mlb:682998},
+  vladdy:{name:'Vladimir Guerrero Jr.',team:'TOR',pos:'1B',grp:'OB',mlb:665489}, freeman:{name:'Freddie Freeman',team:'LAD',pos:'1B',grp:'H',mlb:518692},
+  betts:{name:'Mookie Betts',team:'LAD',pos:'SS',grp:'R',mlb:605141}, turner:{name:'Trea Turner',team:'PHI',pos:'SS',grp:'R',mlb:607208},
+  lindor:{name:'Francisco Lindor',team:'NYM',pos:'SS',grp:'R',mlb:596019}, julio:{name:'Julio Rodriguez',team:'SEA',pos:'CF',grp:'R',mlb:677594},
+  jram:{name:'Jose Ramirez',team:'CLE',pos:'3B',grp:'RBI',mlb:608070}, alonso:{name:'Pete Alonso',team:'NYM',pos:'1B',grp:'RBI',mlb:624413},
+  olson:{name:'Matt Olson',team:'ATL',pos:'1B',grp:'RBI',mlb:621566}, devers:{name:'Rafael Devers',team:'SF',pos:'3B',grp:'RBI',mlb:646240},
+};
+const STATS = {
+  K:  {label:'Strikeouts - Game', unit:'K',  line:[8,11]},
+  BF: {label:'Batters Faced - Game', unit:'BF', line:[22,30]},
+  IP: {label:'Innings Pitched - Game', unit:'IP', line:[5,7]},
+  TB: {label:'Total Bases - Game', unit:'TB', line:[9,13]},
+  OB: {label:'Hits + Walks - Game', unit:'H+BB', line:[7,10]},
+  HR: {label:'Home Runs - Game', unit:'HR', line:[1.5,2.5]},
+  SPD:{label:'Runs + Steals - Game', unit:'R+SB', line:[5,8]},
+  H:  {label:'Hits - Game', unit:'H', line:[6,9]},
+  R:  {label:'Runs Scored - Game', unit:'R', line:[5,8]},
+  RBI:{label:'RBI - Game', unit:'RBI', line:[6,9]},
+  XBH:{label:'Extra-Base Hits - Game', unit:'XBH', line:[1.5,3.5]},
+  HHR:{label:'Hits + Runs + RBI - Game', unit:'H+R+RBI', line:[6,11]},
+  BB: {label:'Walks - Game', unit:'BB', line:[2,5]},
+};
+const BLURBS = [
+  'Two of the hottest bats in the sport, same stat, one week. Somebody blinks.',
+  'The projection lines are nearly identical - this one is pure conviction.',
+  'One of these guys is running a soft schedule this week. Do your homework.',
+  'A classic star-vs-star duel the algorithm could not resist pairing.',
+  'Last time these two were matched, the contrarian side cashed at 3.1x.',
+  'Park factors favor one side heavily this week. The crowd may be wrong anyway.',
+  'Division rivals on the schedule for both - familiarity breeds hard outs.',
+  'One side is riding a heater. Heaters end. Or do they?',
+  'Sneaky volume play: one of these two is projected for 8 more plate appearances.',
+];
+const CHAT_LINES = [
+  '{A} is free money at {x}x, I said what I said',
+  'the chalk is chalk for a reason. hammering {B}',
+  'fading {A} purely out of spite',
+  'line feels a full point too high tbh',
+  'whoever is on {B} has never watched a game in their life',
+  '{A} lock of the week lock',
+  'wind blowing out all weekend, take the over side',
+  'I got burned by {B} last week, never again',
+  'the crowd is asleep on this one',
+  'easiest sweat on the slate',
+];
+const esc = t => t.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function chatLine(m){
+  const ln = pick(CHAT_LINES)
+    .replace('{A}', PLAYERS[m.a].name.split(' ').pop())
+    .replace('{B}', PLAYERS[m.b].name.split(' ').pop())
+    .replace('{x}', (1.2 + Math.random()*2.8).toFixed(1));
+  return {who: pick(FAKES).id, txt: ln};
+}
+function seedChat(m){
+  return Array.from({length: Math.floor(rnd(0,3.4))}, () => chatLine(m));
+}
+
+const FAKES = [
+  {id:'f1',name:'MoonshotMaria',col:'#B558D6'},{id:'f2',name:'K_Machine',col:'#2FA3D9'},
+  {id:'f3',name:'BackdoorSlider',col:'#D96A2F'},{id:'f4',name:'CheeseAt99',col:'#43B764'},
+  {id:'f5',name:'RallyCapRandy',col:'#D6BE43'},{id:'f6',name:'WarningTrack',col:'#D65858'},
+  {id:'f7',name:'DugoutDanny',col:'#6E82D9'},
+];
+const DEFAULT_SETTINGS = {
+  bankroll:1000, minStake:10, maxStake:500, minMult:1.2, maxMult:4.0,
+  streakStep:10, streakCap:50, marginBonus:0.25, matchups:10, drift:70,
+};
+const OPEN_LEAGUES = [
+  {id:'open-sharks', code:'SHARPS', name:'Sharp Money', ownerId:'f2', ownerName:'K_Machine', memberCount:164,
+   desc:'Tighter multipliers, higher minimums, and no place to hide.',
+   settings:{bankroll:1200,minStake:50,maxStake:650,minMult:1.1,maxMult:3.2,streakStep:7,streakCap:35,marginBonus:0.15,matchups:8,drift:45}},
+  {id:'open-chaos', code:'CHAOS', name:'Chaos Ladder', ownerId:'f1', ownerName:'MoonshotMaria', memberCount:91,
+   desc:'Big underdog payouts and faster moving markets.',
+   settings:{bankroll:1000,minStake:10,maxStake:1000,minMult:1.2,maxMult:5.0,streakStep:12,streakCap:60,marginBonus:0.35,matchups:10,drift:110}},
+  {id:'open-casual', code:'FRIDAY', name:'Friday Night Sweat', ownerId:'f5', ownerName:'RallyCapRandy', memberCount:48,
+   desc:'Friendly bankrolls, softer stakes, and a clean weekly reset.',
+   settings:{bankroll:750,minStake:10,maxStake:250,minMult:1.2,maxMult:4.0,streakStep:8,streakCap:40,marginBonus:0.25,matchups:6,drift:60}},
+];
+const BADGES = [
+  {id:'contra',ico:'CR',name:'Contrarian King',desc:'Win a pick that paid 3.0x or better'},
+  {id:'hot',ico:'STK',name:'Hot Hand',desc:'Hit a 3-pick win streak'},
+  {id:'sharp',ico:'AIM',name:'Sharpshooter',desc:'60%+ accuracy over 10+ picks'},
+  {id:'roller',ico:'$',name:'High Roller',desc:'Win a single pick staked 400+'},
+];
+
+/* ---------- state ---------- */
+let S = null;
+
+function genWeek(week, count=10){
+  // pair players inside stat groups, rotate pairings by week for variety
+  const groups = {};
+  Object.entries(PLAYERS).forEach(([id,p]) => { (groups[p.grp] ||= []).push(id); });
+  const matchups = [];
+  let mi = 0;
+  for(const [grp, ids] of Object.entries(groups)){
+    const arr = [...ids];
+    // rotate list by week so pairings change
+    for(let r=0;r<week%Math.max(arr.length,1);r++) arr.push(arr.shift());
+    for(let i=0;i+1<arr.length;i+=2){
+      const st = STATS[grp];
+      const line = Math.round(rnd(st.line[0],st.line[1])*2)/2;
+      matchups.push({
+        id:'w'+week+'m'+(mi++), grp, statCategory:st.label, unit:st.unit,
+        a:arr[i], b:arr[i+1], projectionLine:line,
+        blurb:pick(BLURBS),
+        lastA:Array.from({length:5},()=>Math.max(0,Math.round(rnd(line*0.3,line*0.75)))),
+        lastB:Array.from({length:5},()=>Math.max(0,Math.round(rnd(line*0.3,line*0.75)))),
+        pubA:Math.round(rnd(150,900)), pubB:Math.round(rnd(150,900)), pubTie:Math.round(rnd(45,160)), // simulated public money
+        resolved:false, actualA:null, actualB:null, winner:null,
+      });
+    }
+  }
+  matchups.forEach(m => m.chat = seedChat(m));
+  matchups.sort(() => Math.random() - .5);
+  return matchups.slice(0, count);
+}
+
+function genFakePicks(matchups, settings=DEFAULT_SETTINGS){
+  // each simulated user stakes 3-6 duels from a 1000 bankroll
+  return FAKES.map(f => {
+    const n = 3 + Math.floor(Math.random()*4);
+    const ms = [...matchups].sort(()=>Math.random()-.5).slice(0,n);
+    let left = settings.bankroll; const picks = [];
+    ms.forEach((m,i) => {
+      const st = Math.min(left, settings.maxStake, Math.round(rnd(settings.minStake, Math.max(settings.minStake+10, settings.maxStake*.6))/10)*10);
+      if(st<=0) return;
+      left -= st;
+      picks.push({matchupId:m.id, side:Math.random()<0.08?'tie':(Math.random()<0.5?'a':'b'), stake:st});
+    });
+    return {userId:f.id, picks};
+  });
+}
+
+function makeLeague(opts={}){
+  const settings = {...DEFAULT_SETTINGS, ...(opts.settings||{})};
+  settings.maxStake = Math.max(settings.minStake, settings.maxStake);
+  const week = opts.week || 1;
+  const matchups = opts.matchups || genWeek(week, settings.matchups);
+  return {
+    id: opts.id || ('lg-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6)),
+    code: (opts.code || Math.random().toString(36).slice(2,8)).toUpperCase(),
+    name: opts.name || 'My Chalked League',
+    desc: opts.desc || 'A private weekly sweat with custom market rules.',
+    ownerId: opts.ownerId || 'me',
+    ownerName: opts.ownerName || (opts.ownerId === 'me' ? 'You' : 'League Owner'),
+    memberCount: opts.memberCount || Math.floor(rnd(8,42)),
+    settings, week, phase:opts.phase || 'open',
+    lockTime: opts.lockTime || Date.now() + 1000*60*60*(opts.lockHours || 38),
+    matchups,
+    fakePicks: opts.fakePicks || genFakePicks(matchups, settings),
+    picks: opts.picks || [],
+    user: opts.user || { bankTotal:settings.bankroll, streak:0, season:0, w:0, l:0, history:[], badges:{} },
+    fakes: opts.fakes || FAKES.map(f=>({id:f.id, streak:Math.floor(rnd(0,3)), season:Math.round(rnd(-300,900)), w:Math.floor(rnd(2,9)), l:Math.floor(rnd(2,9))})),
+  };
+}
+
+function seed(){
+  const home = makeLeague({id:'home', code:'HOME', name:'The Clubhouse', desc:'The default Chalked room: balanced multipliers, weekly bankroll resets, and ten duels.'});
+  S = {activeLeagueId:home.id, leagues:[home], joinedOpen:{}, onboarded:false};
+  DB.save(S);
+}
+
+function seq(...codes){ return String.fromCharCode(...codes); }
+const TEXT_FIXES = [
+  [seq(0x00E2,0x20AC,0x201D), '-'], [seq(0x00E2,0x20AC,0x201C), '-'],
+  [seq(0x00E2,0x2020,0x2019), '->'], [seq(0x00E2,0x2013,0x00B8), '>'],
+  [seq(0x00E2,0x0153,0x201C), 'WIN'], [seq(0x00E2,0x0153,0x2014), 'LOSS'],
+  [seq(0x00E2,0x20AC,0x00A6), '...'], [seq(0x00F0,0x0178,0x201D,0x00A5), 'STK'],
+  [seq(0x00F0,0x0178,0x201D,0x2019), 'lock'], [seq(0x00F0,0x0178,0x2018,0x2018), 'CR'],
+  [seq(0x00F0,0x0178,0x017D,0x00AF), 'AIM'], [seq(0x00F0,0x0178,0x2019,0x00B0), '$'],
+  [seq(0x00F0,0x0178,0x2019,0x00AC), 'Chat'], [seq(0x00C2,0x00B7), '-'],
+  [seq(0x00C3,0x00B1), 'n'], [seq(0x00C3,0x00AD), 'i'], [seq(0x00C3,0x00A9), 'e'],
+];
+function cleanText(v){
+  if(typeof v !== 'string') return v;
+  TEXT_FIXES.forEach(([bad, good]) => { v = v.split(bad).join(good); });
+  return v;
+}
+function cleanSavedText(obj, seen=new Set()){
+  if(!obj || typeof obj !== 'object' || seen.has(obj)) return obj;
+  seen.add(obj);
+  Object.keys(obj).forEach(k => {
+    if(typeof obj[k] === 'string') obj[k] = cleanText(obj[k]);
+    else cleanSavedText(obj[k], seen);
+  });
+  return obj;
+}
+
+function migrateState(raw){
+  if(!raw) return null;
+  cleanSavedText(raw);
+  if(raw.leagues && raw.activeLeagueId) {
+    raw.leagues.forEach(l=>{
+      l.settings = {...DEFAULT_SETTINGS, ...(l.settings||{})};
+      if(!l.user) l.user = { bankTotal:l.settings.bankroll, streak:0, season:0, w:0, l:0, history:[], badges:{} };
+      if(!l.user.badges) l.user.badges = {};
+      if(!l.code) l.code = l.id.toUpperCase().slice(0,8);
+      if(!l.ownerId) l.ownerId = 'me';
+      if(!l.ownerName) l.ownerName = l.ownerId === 'me' ? 'You' : 'League Owner';
+      if(!l.memberCount) l.memberCount = 12;
+    });
+    raw.joinedOpen ||= {};
+    return raw;
+  }
+  const settings = {...DEFAULT_SETTINGS, bankroll:raw.user?.bankTotal || 1000};
+  const league = makeLeague({
+    id:'home', code:'HOME', name:'The Clubhouse', desc:'Your original Chalked demo, upgraded into a league.',
+    settings, week:raw.week, phase:raw.phase, lockTime:raw.lockTime, matchups:raw.matchups,
+    fakePicks:raw.fakePicks, picks:raw.picks, user:raw.user, fakes:raw.fakes,
+  });
+  return {activeLeagueId:league.id, leagues:[league], joinedOpen:{}, onboarded:!!raw.onboarded};
+}
+
+function L(){ return S.leagues.find(l=>l.id===S.activeLeagueId) || S.leagues[0]; }
+function isOwner(l=L()){ return l.ownerId === 'me'; }
+
+/* ---------- market math (spec formulas, implemented exactly) ---------- */
+function sideTotals(m){
+  let A = m.pubA, B = m.pubB, Tie = m.pubTie || 80;
+  L().fakePicks.forEach(fp => fp.picks.forEach(p => { if(p.matchupId===m.id) p.side==='a'?A+=p.stake:p.side==='tie'?Tie+=p.stake:B+=p.stake; }));
+  L().picks.forEach(p => { if(p.matchupId===m.id) p.side==='a'?A+=p.stake:p.side==='tie'?Tie+=p.stake:B+=p.stake; });
+  return {A,B,Tie,T:A+B+Tie};
+}
+function mult(m, side){
+  const {A,B,Tie,T} = sideTotals(m);
+  if(T<=0) return 2.0;
+  const p = (side==='a'?A:(side==='tie'?Tie:B))/T;
+  if(p<=0) return L().settings.maxMult;
+  return clamp(1/p, L().settings.minMult, L().settings.maxMult);
+}
+function multClass(x){ return x>=2.2?'hot':(x>=1.6?'warm':'chalk'); }
+function streakBonus(streak){ return Math.min(1 + (L().settings.streakStep/100)*streak, 1 + L().settings.streakCap/100); }
+
+function stakedTotal(){ return L().picks.reduce((s,p)=>s+p.stake,0); }
+function bankLeft(){ return L().user.bankTotal - stakedTotal(); }
+
+/* ---------- rendering ---------- */
+const initials = n => n.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+
+const MLBIMG = id => `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${id}/headshot/67/current`;
+function avatarHTML(pid, side){
+  const p = PLAYERS[pid];
+  const col = side==='a' ? 'var(--red)' : 'var(--blue)';
+  return `<div class="avatar" style="background:linear-gradient(140deg,${TEAMCOL[p.team]||'#333'} 0%, #10161F 130%);box-shadow:inset 0 0 0 2px ${col}33">${initials(p.name)}${p.mlb?`<img src="${MLBIMG(p.mlb)}" alt="${p.name}" loading="lazy" onerror="this.remove()">`:''}</div>`;
+}
+
+function leagueChips(l){
+  return `<span class="league-chip"><b>${l.code}</b> code</span>
+    <span class="league-chip"><b>${l.memberCount}</b> managers</span>
+    <span class="league-chip"><b>${l.settings.bankroll}</b> bank</span>
+    <span class="league-chip"><b>${l.settings.minStake}-${l.settings.maxStake}</b> stake</span>
+    <span class="league-chip"><b>${l.settings.minMult.toFixed(1)}-${l.settings.maxMult.toFixed(1)}x</b> mult</span>
+    <span class="league-chip"><b>${l.settings.playoffEnabled?'ON':'OFF'}</b> playoffs</span>`;
+}
+function leagueAvatarHTML(l, cls='league-avatar-sm'){
+  const label = initials(l?.name || 'League');
+  const img = l?.avatarUrl ? `<img src="${esc(l.avatarUrl)}" alt="${esc(l.name || 'League')}" loading="lazy" onerror="this.remove()">` : '';
+  return `<span class="${cls}">${img || label}</span>`;
+}
+function leagueRank(l){
+  const rows = (l.boardRows || []).slice().sort((a,b)=>(b.season||0)-(a.season||0));
+  const currentUser = typeof apiUser !== 'undefined' ? apiUser : null;
+  const idx = rows.findIndex(r=>currentUser ? r.user_id===currentUser.id : r.userId==='me');
+  return idx >= 0 ? `#${idx+1}` : '-';
+}
+function renderLeagueDashboard(l){
+  const currentUser = typeof apiUser !== 'undefined' ? apiUser : null;
+  const user = l.user || {};
+  const rows = (l.boardRows || []).slice().sort((a,b)=>(b.season||0)-(a.season||0));
+  const mine = rows.find(r=>currentUser && r.user_id===currentUser.id);
+  const statCounts = {};
+  (l.matchups || []).forEach(m=> statCounts[m.grp] = (statCounts[m.grp] || 0) + 1);
+  const statEntries = Object.entries(statCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const maxStat = Math.max(1, ...statEntries.map(x=>x[1]));
+  const topRows = rows.slice(0,4);
+  const events = (l.activity || []).slice(0,4);
+  const statBars = statEntries.length ? statEntries.map(([key,count])=>`<div class="mini-bar">
+      <span>${esc(key)}</span><span class="mini-bar-track"><span class="mini-bar-fill" style="width:${Math.round(100*count/maxStat)}%"></span></span><b>${count}</b>
+    </div>`).join('') : `<div class="mini-row"><b>No slate loaded</b><span></span><span class="pts">-</span></div>`;
+  const standings = topRows.length ? topRows.map((r,i)=>{
+    const name = r.display_name || r.handle || r.name || 'Manager';
+    return `<div class="mini-row"><span>${i+1}</span><b>${esc(name)}</b><span class="pts ${(+r.season||0)>=0?'pos':'neg'}">${fmt(+r.season||0)}</span></div>`;
+  }).join('') : `<div class="mini-row"><span>1</span><b>${esc(currentUser?.display_name || currentUser?.handle || 'You')}</b><span class="pts">0</span></div>`;
+  const activity = events.length ? `<div class="activity-list">${events.map(e=>{
+    const actor = e.user?.display_name || e.user?.handle || 'League';
+    return `<div class="activity-item">
+      <span class="activity-icon">${esc(activityIcon(e.kind))}</span>
+      <div class="activity-copy"><b>${esc(actor)}</b><span>${esc(activityText(e))}</span></div>
+      <span class="activity-time">${shortTime(e.created_at)}</span>
+    </div>`;
+  }).join('')}</div>` : `<div class="mini-row"><span>-</span><b>No league activity yet</b><span class="pts">soon</span></div>`;
+  return `<div class="league-stat-mini"><span>Your rank</span><b>${leagueRank(l)}</b><small>${esc(mine?.role === 'owner' ? 'Owner seat' : 'League standing')}</small></div>
+    <div class="league-stat-mini"><span>Season net</span><b class="${(user.season||0)>=0?'pos':'neg'}">${fmt(user.season||0)}</b><small>${user.w||0}-${user.l||0} record</small></div>
+    <div class="mini-bars"><span class="mini-title">Slate mix</span>${statBars}</div>
+    <div class="mini-standings"><span class="mini-title">Top standings</span>${standings}</div>
+    <div class="mini-standings"><span class="mini-title">League activity</span>${activity}</div>
+    <div class="league-stat-mini"><span>Bank left</span><b>${fmt(user.bankTotal ?? l.settings.bankroll)}</b><small>Weekly bankroll</small></div>`;
+}
+function activityIcon(kind){
+  return {league_created:'NEW', member_joined:'JOIN', pick_locked:'PICK', pick_won:'WIN', pick_lost:'LOSS'}[kind] || 'LOG';
+}
+function activityText(e){
+  const meta = e.metadata || {};
+  if(e.kind === 'pick_locked') return meta.stake && meta.side_name ? `picked ${meta.stake} pts on ${meta.side_name}` : (e.message || 'made a pick');
+  if(e.kind === 'pick_won') return e.message || 'won a settled pick';
+  if(e.kind === 'pick_lost') return e.message || 'lost a settled pick';
+  if(e.kind === 'member_joined') return 'joined the league';
+  if(e.kind === 'league_created') return 'created this league';
+  return e.message || 'league update';
+}
+function shortTime(value){
+  if(!value) return '';
+  return new Date(value).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
+}
+function renderLeagues(){
+  const l = L();
+  $('#leagueAvatarBig').innerHTML = leagueAvatarHTML(l, 'league-avatar-lg');
+  $('#leagueNameBig').textContent = l.name;
+  $('#leagueOwnerBig').classList.toggle('hide', !isOwner(l));
+  $('#leagueDesc').textContent = l.desc;
+  $('#leagueMeta').innerHTML = leagueChips(l);
+  $('#leagueDash').innerHTML = renderLeagueDashboard(l);
+  $('#leagueList').innerHTML = S.leagues.map(x=>leagueCard(x, true)).join('');
+  $('#openLeagueList').innerHTML = OPEN_LEAGUES.filter(x=>!S.leagues.some(lg=>lg.code===x.code)).map(x=>leagueCard(x, false)).join('')
+    || `<div class="empty" style="grid-column:1/-1"><b>All caught up</b>You have joined every open league in this demo.</div>`;
+  renderLeagueSettings();
+}
+function leagueCard(l, joined){
+  const active = joined && l.id===S.activeLeagueId;
+  const owner = l.ownerId==='me';
+  return `<div class="league-card ${active?'active':''}">
+    <div class="league-card-head">${leagueAvatarHTML(l)}
+      <div><h3>${esc(l.name)} ${owner?'<span class="owner-crown" title="You own this league"><span class="emoji">&#128081;</span> OWN</span>':''}</h3>
+      <p>${esc(l.desc)}</p></div>
+    </div>
+    <div class="league-meta">${leagueChips(l)}</div>
+    <div class="actions">
+      ${joined ? `<button class="btn ${active?'gold':''}" onclick="switchLeague('${l.id}')">${active?'Active':'Switch'}</button>`
+        : `<button class="btn gold" onclick="joinOpenLeague('${l.code}')">Join</button>`}
+      <button class="btn ghost" onclick="copyLeagueCode('${l.code}')">Invite</button>
+    </div>
+  </div>`;
+}
+function settingSlider(key, label, min, max, step, fmtValue, help){
+  const l = L(), disabled = !isOwner(l) ? 'disabled' : '';
+  const v = l.settings[key];
+  return `<div class="setting-row ${disabled?'league-locked':''}">
+    <div class="setting-head"><span>${label}</span><b>${fmtValue(v)}</b></div>
+    <input type="range" min="${min}" max="${max}" step="${step}" value="${v}" ${disabled} oninput="updateSetting('${key}', this.value)">
+    <small>${help}</small>
+  </div>`;
+}
+function renderLeagueSettings(){
+  const l = L();
+  $('#leagueSettings').innerHTML = `<h3>League Rules ${isOwner(l)?'<span class="owner-crown" title="Owner controls"><span class="emoji">&#128081;</span> OWN</span>':''}</h3>
+    <div class="settings-note">${isOwner(l) ? 'Owner controls are live and saved to this league.' : `${esc(l.ownerName)} owns this rule set.`}</div>
+    <div class="setting-row ${!isOwner(l)?'league-locked':''}">
+      <div class="form-field"><label>League name</label><input value="${esc(l.name)}" ${!isOwner(l)?'disabled':''} onchange="updateSetting('name', this.value)"></div>
+      <div class="form-field" style="margin-top:8px"><label>Description</label><textarea ${!isOwner(l)?'disabled':''} onchange="updateSetting('description', this.value)">${esc(l.desc || '')}</textarea></div>
+      <div class="form-field" style="margin-top:8px"><label>League image</label>
+        <input class="file-input" id="leagueImageFile" type="file" accept="image/*" ${!isOwner(l)?'disabled':''} onchange="uploadLeagueImage(this)">
+        <label class="image-upload" for="leagueImageFile">
+          <span class="pic">${l.avatarUrl?`<img src="${esc(l.avatarUrl)}" onerror="this.remove()">`:'IMG'}</span>
+          <span><b>Upload league image</b><small>Updates this league instantly</small></span>
+        </label>
+      </div>
+      <small>Images are uploaded to this site, then saved on the league.</small>
+    </div>
+    ${settingSlider('bankroll','Weekly bankroll',500,2000,50,v=>`${v} pts`,'Fresh points available each week.')}
+    ${settingSlider('minStake','Minimum bet',10,200,10,v=>`${v} pts`,'Smallest lock allowed on any duel.')}
+    ${settingSlider('maxStake','Maximum bet',100,Math.max(100,l.settings.bankroll),10,v=>`${v} pts`,'Caps single-pick exposure.')}
+    ${settingSlider('minMult','Minimum multiplier',1,2,.1,v=>`${(+v).toFixed(1)}x`,'Floor for heavy chalk payouts.')}
+    ${settingSlider('maxMult','Maximum multiplier',2.5,6,.1,v=>`${(+v).toFixed(1)}x`,'Ceiling for contrarian payouts.')}
+    ${settingSlider('streakStep','Streak boost per win',0,20,1,v=>`+${v}%`,'Bonus added for each active win in a row.')}
+    ${settingSlider('streakCap','Streak boost cap',0,75,5,v=>`+${v}%`,'Maximum streak multiplier bonus.')}
+    ${settingSlider('marginBonus','Blowout bonus',0,.75,.05,v=>`+${(+v).toFixed(2)}x`,'Extra multiplier when a winner clears the projection by 20%.')}
+    ${settingSlider('matchups','Duels per slate',4,14,1,v=>v,'More same-day MLB player duels, sorted by game time.')}
+    ${settingSlider('seasonWeeks','Season length',1,26,1,v=>`${v} weeks`,'Regular season weeks before playoffs.')}
+    ${settingSlider('playoffWeeks','Playoff duration',1,4,1,v=>`${v} weeks`,'How many weeks the playoff bracket spans.')}
+    <div class="setting-row ${!isOwner(l)?'league-locked':''}">
+      <div class="setting-head"><span>Playoffs</span><b>${l.settings.playoffEnabled?'ON':'OFF'}</b></div>
+      <label class="toggle-row" style="margin-top:0"><span>Enable bracket playoffs</span><input type="checkbox" ${l.settings.playoffEnabled?'checked':''} ${!isOwner(l)?'disabled':''} onchange="updateSetting('playoffEnabled', this.checked)"></label>
+      <small>Best for leagues with 32 or fewer managers.</small>
+    </div>
+    <div class="setting-row ${!isOwner(l)?'league-locked':''}">
+      <div class="setting-head"><span>Playoff size</span><b>${l.settings.playoffSize}</b></div>
+      <select ${!isOwner(l)?'disabled':''} onchange="updateSetting('playoffSize', this.value)" style="width:100%;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:9px;padding:8px">
+        ${[4,6,8,10,12,14,16].map(n=>`<option value="${n}" ${n==l.settings.playoffSize?'selected':''}>${n} players</option>`).join('')}
+      </select>
+      <small>Seeds are pulled from the league standings.</small>
+    </div>
+    <div class="setting-row ${!isOwner(l)?'league-locked':''}">
+      <div class="setting-head"><span>League image URL</span><b>IMG</b></div>
+      <input value="${esc(l.avatarUrl||'')}" ${!isOwner(l)?'disabled':''} onchange="updateSetting('avatar_url', this.value)" placeholder="/uploads/..." style="width:100%;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:9px;padding:8px">
+    </div>
+    ${isOwner(l)?`<div class="setting-row">
+      <div class="setting-head"><span>Danger zone</span><b>OWNER</b></div>
+      <button class="btn danger" style="width:100%" onclick="askDeleteLeague('${l.id}')">Delete league</button>
+      <small>Shows a confirmation first. Deletes picks, standings, and playoff data.</small>
+    </div>`:''}`;
+}
+function updateSetting(key, value){
+  const l = L();
+  if(!isOwner(l)) return;
+  if(key==='name'){ l.name = (value || '').trim() || l.name; DB.save(S); refresh(); return; }
+  if(key==='description'){ l.desc = (value || '').trim() || l.desc; DB.save(S); refresh(); return; }
+  if(key==='avatar_url'){ l.avatarUrl = (value || '').trim(); DB.save(S); refresh(); return; }
+  const numeric = key==='matchups' ? parseInt(value,10) : parseFloat(value);
+  l.settings[key] = numeric;
+  l.settings.minStake = Math.min(l.settings.minStake, l.settings.maxStake);
+  l.settings.maxStake = Math.max(l.settings.minStake, Math.min(l.settings.maxStake, l.settings.bankroll));
+  l.settings.maxMult = Math.max(l.settings.minMult + .1, l.settings.maxMult);
+  if(key==='bankroll' && !l.picks.length) l.user.bankTotal = l.settings.bankroll;
+  if(key==='matchups' && l.phase==='open' && !l.picks.length){
+    l.matchups = genWeek(l.week, l.settings.matchups);
+    l.fakePicks = genFakePicks(l.matchups, l.settings);
+  }
+  DB.save(S);
+  refresh();
+}
+function switchLeague(id){
+  if(!S.leagues.some(l=>l.id===id)) return;
+  S.activeLeagueId = id;
+  DB.save(S);
+  refresh();
+  toast(`Loaded ${L().name}`);
+}
+function joinOpenLeague(code){
+  const tpl = OPEN_LEAGUES.find(x=>x.code===code);
+  if(!tpl) return;
+  const l = makeLeague({...tpl, id:'joined-'+tpl.id, settings:{...tpl.settings}});
+  S.leagues.push(l);
+  S.activeLeagueId = l.id;
+  DB.save(S);
+  refresh();
+  toast(`Joined ${l.name}`);
+}
+function joinByCode(){
+  const code = ($('#joinCode').value || '').trim().toUpperCase();
+  if(!code) return toast('Enter a league code');
+  const existing = S.leagues.find(l=>l.code===code);
+  if(existing){ switchLeague(existing.id); return; }
+  const open = OPEN_LEAGUES.find(l=>l.code===code);
+  if(open){ joinOpenLeague(code); return; }
+  const owner = pick(FAKES);
+  const l = makeLeague({code, name:`Invite ${code}`, ownerId:owner.id, ownerName:owner.name, memberCount:Math.floor(rnd(6,28)), desc:'A joined invite league ready for backend-backed membership.'});
+  S.leagues.push(l);
+  S.activeLeagueId = l.id;
+  DB.save(S);
+  $('#joinCode').value = '';
+  refresh();
+  toast(`Joined ${l.name}`);
+}
+let pendingDeleteLeagueId = null;
+function askDeleteLeague(id){
+  const l = S.leagues.find(x=>x.id===id);
+  if(!l || !isOwner(l)) return;
+  pendingDeleteLeagueId = id;
+  $('#deleteLeagueName').textContent = l.name;
+  $('#deleteLeagueModal').classList.remove('hide');
+}
+function closeDeleteLeague(){
+  pendingDeleteLeagueId = null;
+  $('#deleteLeagueModal').classList.add('hide');
+}
+async function confirmDeleteLeague(){
+  const id = pendingDeleteLeagueId;
+  if(!id) return closeDeleteLeague();
+  try{
+    if(API_MODE){
+      await apiFetch(`/api/leagues/${id}`, {method:'DELETE'});
+      closeDeleteLeague();
+      await apiLoad();
+    } else {
+      S.leagues = S.leagues.filter(l=>l.id!==id);
+      S.activeLeagueId = S.leagues[0]?.id;
+      DB.save(S);
+      closeDeleteLeague();
+      refresh();
+    }
+    toast('League deleted');
+    go('leagues');
+  }catch(e){ toast(e.message); }
+}
+function askRefreshSlate(){
+  if(!isOwner()) return;
+  $('#refreshSlateModal').classList.remove('hide');
+}
+function closeRefreshSlate(){
+  $('#refreshSlateModal').classList.add('hide');
+}
+async function confirmRefreshSlate(){
+  try{
+    if(API_MODE){
+      const leagueId = L().id;
+      const data = await apiFetch(`/api/leagues/${leagueId}/slate/refresh`, {method:'POST', body:'{}'});
+      closeRefreshSlate();
+      leagueLoadCache.delete(leagueId);
+      const l = S.leagues.find(x=>x.id===leagueId);
+      if(l && data.slate){
+        Object.assign(l, {
+          week:data.slate.week,
+          phase:data.slate.status === 'open' ? 'open' : 'resolved',
+          lockTime:Date.parse(data.slate.locks_at),
+          matchups:data.slate.matchups.map(mapApiMatchup),
+          picks:[]
+        });
+      }
+      await apiLoadLeague(leagueId, true);
+    } else {
+      const l = L();
+      l.picks = [];
+      l.matchups = genWeek(l.week, l.settings.matchups);
+      l.fakePicks = genFakePicks(l.matchups, l.settings);
+      DB.save(S);
+      closeRefreshSlate();
+    }
+    refresh();
+    go('slate');
+    toast('Fresh MLB slate loaded');
+  }catch(e){ toast(e.message); }
+}
+function createLeague(){
+  const n = S.leagues.filter(l=>l.ownerId==='me').length + 1;
+  const l = makeLeague({name:`My League ${n}`, code:`OWN${n}${Math.floor(rnd(10,99))}`, memberCount:1});
+  S.leagues.push(l);
+  S.activeLeagueId = l.id;
+  DB.save(S);
+  refresh();
+  go('leagues');
+  toast('Created league. The crown is yours.');
+}
+function copyLeagueCode(code){
+  const input = $('#joinCode');
+  input.value = code;
+  input.focus();
+  const link = `${location.origin}${location.pathname}?join=${encodeURIComponent(code)}`;
+  if(navigator.clipboard?.writeText){
+    navigator.clipboard.writeText(link).then(()=>toast(`Invite link copied: ${code}`)).catch(()=>toast(`Code ready: ${code}`));
+  } else {
+    toast(`Code ready: ${code}`);
+  }
+}
+
+function renderBank(){
+  const l = L();
+  $('#bankLeft').textContent = bankLeft();
+  $('#bankTotal').textContent = l.user.bankTotal;
+  $('#bankStaked').textContent = stakedTotal();
+  $('#bankMeter').style.width = (100*bankLeft()/l.user.bankTotal)+'%';
+  $('#seasonPts').textContent = fmt(l.user.season).replace('+0','0');
+  $('#streakNum').textContent = l.user.streak;
+  $('#topLeagueName').textContent = l.name;
+  $('#topLeagueCrown').classList.toggle('hide', !isOwner(l));
+  $('#decayWarn').textContent = ` - bankroll resets to ${l.settings.bankroll.toLocaleString()} every week`;
+  const n = l.picks.length, dot = $('#pickDot');
+  dot.textContent = n; dot.classList.toggle('hide', n===0);
+}
+
+function renderSlate(){
+  const l = L();
+  const g = $('#slateGrid'); g.innerHTML='';
+  $('#weekNum').textContent = l.week;
+  $('#slateSub').textContent = ' - '+l.matchups.length+' duels in '+l.name;
+  const chip = $('#slateDataChip');
+  if(chip) chip.textContent = l.phase==='open' ? 'Real MLB player pool' : 'Slate settled';
+  const refreshBtn = $('#refreshSlateBtn');
+  if(refreshBtn) refreshBtn.classList.toggle('hide', !isOwner(l) || l.phase !== 'open');
+  if(!l.matchups.length){
+    const ownerCopy = isOwner(l) ? 'Use Refresh today to rebuild from the latest MLB schedule.' : 'The league owner can refresh from the latest MLB schedule.';
+    g.innerHTML = `<div class="empty" style="grid-column:1/-1"><b>No matchups on this slate yet</b>${ownerCopy}</div>`;
+    return;
+  }
+  l.matchups.forEach(m => g.appendChild(card(m)));
+}
+
+function fmtGameTime(iso){
+  if(!iso) return 'Game time TBA';
+  return new Date(iso).toLocaleString([], {weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
+}
+function gameStatusText(m){
+  const g = m.game || {};
+  if(g.is_live) return 'Live game';
+  return `${g.status || 'Scheduled'} - ${fmtGameTime(g.start)}`;
+}
+function playerGame(m, side){
+  return (m.playerGames && m.playerGames[side]) || m.game || {};
+}
+function playerLiveLine(m, side){
+  const g = playerGame(m, side);
+  if(g.is_live) return `${g.inning || 'Live'} - ${m.liveStats?.[side] || 0} ${m.unit}`;
+  if(g.is_locked) return 'Locked';
+  return '';
+}
+function sideName(m, side){
+  if(side === 'tie') return 'Tie';
+  return PLAYERS[m[side]]?.name || side;
+}
+function sideColor(side){
+  return side === 'a' ? 'var(--red)' : side === 'b' ? 'var(--blue)' : 'var(--gold)';
+}
+function eligibilityTag(m, side){
+  const info = m.playerInfo?.[side]?.eligibility || {};
+  const confidence = info.confidence || '';
+  if(!confidence) return '';
+  const label = info.role === 'probable_starting_pitcher' ? 'probable SP' : confidence === 'team_scheduled' ? 'scheduled' : confidence;
+  return `<span class="elig-tag ${esc(confidence)}" title="${esc(info.reason || '')}">${esc(label)}</span>`;
+}
+function matchupLockMs(m){
+  const start = Date.parse(m.game?.locks_at || m.game?.start || 0);
+  if(!start) return Infinity;
+  return Math.max(0, start - Date.now());
+}
+function isMatchupLocked(m){
+  return !!(m.resolved || m.game?.is_locked || m.game?.is_live || matchupLockMs(m) <= 0);
+}
+function lockCountdownText(m){
+  const ms = matchupLockMs(m);
+  if(!Number.isFinite(ms)) return 'Lock time TBA';
+  if(ms <= 0) return 'Locked';
+  const h = Math.floor(ms/3.6e6), mn = Math.floor(ms%3.6e6/6e4), sc = Math.floor(ms%6e4/1000);
+  return `Locks in ${h}h ${String(mn).padStart(2,'0')}m ${String(sc).padStart(2,'0')}s`;
+}
+
+function card(m){
+  const A = PLAYERS[m.a], B = PLAYERS[m.b];
+  const {A:sA,B:sB,Tie:sT,T} = sideTotals(m);
+  const mA = mult(m,'a'), mB = mult(m,'b'), mT = mult(m,'tie');
+  const my = L().picks.find(p=>p.matchupId===m.id);
+  const el = document.createElement('div');
+  el.className = 'match-card' + (m.game?.is_live?' live':'') + (my?' committed':'') + (m.resolved ? (my ? (my.side===m.winner?' won':' lost') : '') : '');
+  el.dataset.mid = m.id;
+
+  const pctA = T? Math.round(100*sA/T) : 50;
+  const pctT = T? Math.round(100*sT/T) : 0;
+  const pctB = Math.max(0, 100 - pctA - pctT);
+  el.innerHTML = `
+    <div class="mc-top">
+      <span class="stat-chip"><span class="emoji">&#9918;</span> ${(m.statCategory || '').replace('This Week','Game')}</span>
+      <span style="display:flex;gap:12px">
+        <button class="detail-btn" onclick="toggleDetail('${m.id}')">details</button>
+        <button class="detail-btn" data-chatbtn onclick="toggleChat('${m.id}')">Chat ${m.chat.length}</button>
+      </span>
+    </div>
+    <div class="game-line">${m.game?.is_live?'<span class="live-dot"></span>':''}<span>${gameStatusText(m)}</span><span class="chip" data-lock-count="${m.id}">${lockCountdownText(m)}</span></div>
+    <div class="mc-players">
+      <div class="pside ${my&&my.side==='a'?'selA':''}" onclick="selSide('${m.id}','a')">
+        ${avatarHTML(m.a,'a')}
+        <div class="pname" style="color:var(--red)">${A.name}</div>
+        <div class="pteam">${A.team} - ${A.pos}</div>
+        ${eligibilityTag(m,'a')}
+        <div class="p-live-line">${playerLiveLine(m,'a')}</div>
+        <div class="mult ${multClass(mA)}" data-ms="a">${mA.toFixed(2)}x</div>
+      </div>
+      <div class="vs-col">
+        <span class="vs">VS</span>
+        <div class="tie-pick ${my&&my.side==='tie'?'selT':''}" onclick="selSide('${m.id}','tie')" title="Pick both players to tie in ${m.unit}">
+          <b>TIE</b>
+          <small data-ms="tie">${mT.toFixed(2)}x</small>
+        </div>
+      </div>
+      <div class="pside ${my&&my.side==='b'?'selB':''}" onclick="selSide('${m.id}','b')">
+        ${avatarHTML(m.b,'b')}
+        <div class="pname" style="color:var(--blue)">${B.name}</div>
+        <div class="pteam">${B.team} - ${B.pos}</div>
+        ${eligibilityTag(m,'b')}
+        <div class="p-live-line">${playerLiveLine(m,'b')}</div>
+        <div class="mult ${multClass(mB)}" data-ms="b">${mB.toFixed(2)}x</div>
+      </div>
+    </div>
+    <div class="tug"><div class="tA" style="width:${pctA}%"></div><div style="width:${pctT}%;background:linear-gradient(90deg,#D9A72E,var(--gold))"></div><div class="tB" style="width:${pctB}%"></div></div>
+    <div class="tug-labels"><span>${pctA}% - ${sA} pts</span><span>${pctT}% tie - ${sT} pts</span><span>${pctB}% - ${sB} pts</span></div>
+    <div class="mc-stake" data-stake></div>
+    <div class="mc-detail hide" data-detail></div>
+    <div class="mc-chat hide" data-chat></div>`;
+
+  renderStakeArea(el, m);
+  renderDetailArea(el, m);
+  renderChatArea(el, m);
+  return el;
+}
+
+function renderStakeArea(el, m){
+  const l = L();
+  const box = el.querySelector('[data-stake]');
+  const my = l.picks.find(p=>p.matchupId===m.id);
+
+  if(m.resolved){
+    const A = PLAYERS[m.a], B = PLAYERS[m.b];
+    const wname = sideName(m, m.winner);
+    let netHTML = `<span class="net zero">no pick</span>`;
+    if(my){
+      const won = my.side===m.winner;
+      netHTML = `<span class="net ${won?'pos':'neg'}">${won?fmt(my.payout):'-'+my.stake}</span>`;
+    }
+    box.innerHTML = `<div class="result-strip">
+        <span class="winner-tag ${m.winner==='a'?'A':m.winner==='b'?'B':'T'}">WIN ${wname}</span>
+        <span class="rs-stat">${m.actualA} - ${m.actualB} ${m.unit}${m.marginBonusHit?' - +'+L().settings.marginBonus.toFixed(2)+'x margin':''}</span>
+        ${netHTML}</div>`;
+    return;
+  }
+
+  if(isMatchupLocked(m)){
+    box.innerHTML = `<div class="hint-pick">This matchup locked at ${fmtGameTime(m.game?.locks_at || m.game?.start)}.</div>`;
+    return;
+  }
+
+  if(my){
+    box.innerHTML = `<div class="pick-locked">
+        <span>Backed <b style="color:${sideColor(my.side)}">${sideName(m, my.side)}</b></span>
+        <span class="lk">${my.stake} pts @ ${my.multAtLock.toFixed(2)}x -> win ${Math.round(my.stake*my.multAtLock*streakBonus(l.user.streak))}</span>
+        ${isMatchupLocked(m) ? '<span class="rm">locked</span>' : `<button class="rm" onclick="removePick('${m.id}')">remove</button>`}</div>`;
+    return;
+  }
+
+  const sel = el._sel; // 'a' | 'b' | 'tie' | undefined
+  if(!sel){
+    box.innerHTML = `<div class="hint-pick">Tap a player or the tie box to pick a side</div>`;
+    return;
+  }
+  const minStake = l.settings.minStake;
+  const mx = Math.max(0, Math.min(bankLeft(), l.settings.maxStake));
+  const startStake = mx >= minStake ? Math.min(Math.max(100, minStake), mx) : 0;
+  const mm = mult(m, sel);
+  box.innerHTML = `
+    <div class="stake-row">
+      <input type="range" min="${minStake}" max="${mx}" step="10" value="${startStake}" oninput="syncStake(this,'${m.id}')" ${mx<minStake?'disabled':''}>
+      <input type="number" min="${minStake}" max="${mx}" step="10" value="${startStake}" oninput="syncStake(this,'${m.id}')" ${mx<minStake?'disabled':''}>
+    </div>
+    <div class="stake-meta">
+      <span class="payout">Potential: <b data-pay>${Math.round(startStake*mm*streakBonus(l.user.streak))}</b> <span style="color:var(--faint)">@ ${mm.toFixed(2)}x${l.user.streak?` - STKx${streakBonus(l.user.streak).toFixed(2)}`:''}</span></span>
+      <button class="commit" onclick="commitPick('${m.id}')" ${mx<minStake?'disabled':''}>Lock it in</button>
+    </div>`;
+}
+
+function renderDetailArea(el, m){
+  const A = PLAYERS[m.a], B = PLAYERS[m.b];
+  const {A:sA,B:sB,Tie:sT,T} = sideTotals(m);
+  const last5 = vals => vals?.length ? vals.map(v=>`<span class="l5">${Number.isInteger(v)?v:v.toFixed(1)}</span>`).join('') : '<span class="l5">No recent log yet</span>';
+  const auditTime = m.audit?.stat_synced_at ? new Date(m.audit.stat_synced_at).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : 'not synced yet';
+  const settledTime = m.audit?.settled_at ? ` - settled ${new Date(m.audit.settled_at).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})}` : '';
+  el.querySelector('[data-detail]').innerHTML = `
+    <div class="blurb">${m.blurb}</div>
+    <div class="last5"><span class="who">${A.name.split(' ').pop()} last 5 ${m.unit}:</span>${last5(m.lastA)}</div>
+    <div class="last5"><span class="who">${B.name.split(' ').pop()} last 5 ${m.unit}:</span>${last5(m.lastB)}</div>
+    <div class="comm-line">Stats source: ${esc(m.audit?.source || 'MLB StatsAPI')} - last checked ${esc(auditTime)}${esc(settledTime)}</div>
+    <div class="comm-line">Community pool: ${T} pts - ${sA} on ${A.name.split(' ').pop()} / ${sT} on tie / ${sB} on ${B.name.split(' ').pop()}</div>`;
+}
+
+/* ---------- interactions ---------- */
+function selSide(mid, side){
+  const m = L().matchups.find(x=>x.id===mid);
+  if(m.resolved || isMatchupLocked(m) || L().picks.find(p=>p.matchupId===mid)) return;
+  const el = document.querySelector(`[data-mid="${mid}"]`);
+  el._sel = side;
+  el.querySelectorAll('.pside')[0].classList.toggle('selA', side==='a');
+  el.querySelectorAll('.pside')[1].classList.toggle('selB', side==='b');
+  const tie = el.querySelector('.tie-pick');
+  if(tie) tie.classList.toggle('selT', side==='tie');
+  renderStakeArea(el, m);
+}
+
+function syncStake(input, mid){
+  const l = L();
+  const el = document.querySelector(`[data-mid="${mid}"]`);
+  const m = l.matchups.find(x=>x.id===mid);
+  const mx = Math.max(0, Math.min(bankLeft(), l.settings.maxStake));
+  let v = clamp(Math.round((+input.value||l.settings.minStake)/10)*10, l.settings.minStake, mx);
+  el.querySelector('input[type=range]').value = v;
+  el.querySelector('input[type=number]').value = v;
+  const mm = mult(m, el._sel);
+  el.querySelector('[data-pay]').textContent = Math.round(v*mm*streakBonus(l.user.streak));
+}
+
+function commitPick(mid){
+  const l = L();
+  const el = document.querySelector(`[data-mid="${mid}"]`);
+  const m = l.matchups.find(x=>x.id===mid);
+  if(isMatchupLocked(m)){ toast('That matchup is locked'); return; }
+  const side = el._sel; if(!side) return;
+  const stake = clamp(+el.querySelector('input[type=number]').value||0, l.settings.minStake, Math.min(bankLeft(), l.settings.maxStake));
+  if(stake < l.settings.minStake){ toast(`Minimum bet is ${l.settings.minStake} points`); return; }
+  l.picks.push({matchupId:mid, side, stake, multAtLock:mult(m,side)});
+  DB.save(S);
+  refresh();
+  toast(`Locked: ${sideName(m, side)} for ${stake} pts`);
+}
+
+function removePick(mid){
+  L().picks = L().picks.filter(p=>p.matchupId!==mid);
+  DB.save(S); refresh();
+}
+
+function toggleDetail(mid){
+  document.querySelector(`[data-mid="${mid}"] [data-detail]`).classList.toggle('hide');
+}
+
+function renderChatArea(el, m){
+  const box = el.querySelector('[data-chat]');
+  const prev = box.querySelector('.chat-in input');
+  const keep = prev ? prev.value : '';
+  const msgs = m.chat.map(c => {
+    const isMe = c.who === 'me';
+    const f = isMe ? null : FAKES.find(x => x.id === c.who);
+    return `<div class="msg"><span class="mname" style="color:${isMe ? 'var(--gold)' : f.col}">${isMe ? 'You' : f.name}</span>${esc(c.txt)}</div>`;
+  }).join('');
+  box.innerHTML = `<div class="chat-msgs">${msgs || '<div class="msg" style="color:var(--faint)">No talk yet. Start it.</div>'}</div>
+    <div class="chat-in"><input maxlength="140" placeholder="Talk your talk..." onkeydown="if(event.key==='Enter')sendChat('${m.id}')">
+    <button class="commit" style="padding:7px 14px" onclick="sendChat('${m.id}')">Send</button></div>`;
+  box.querySelector('.chat-in input').value = keep;
+  box.querySelector('.chat-msgs').scrollTop = 1e6;
+}
+
+function toggleChat(mid){
+  const el = document.querySelector(`[data-mid="${mid}"]`);
+  const m = L().matchups.find(x => x.id === mid);
+  renderChatArea(el, m);
+  el.querySelector('[data-chat]').classList.toggle('hide');
+}
+
+function sendChat(mid){
+  const el = document.querySelector(`[data-mid="${mid}"]`);
+  const m = L().matchups.find(x => x.id === mid);
+  const input = el.querySelector('[data-chat] .chat-in input');
+  const txt = (input.value || '').trim();
+  if(!txt) return;
+  m.chat.push({who:'me', txt});
+  DB.save(S);
+  input.value = '';
+  renderChatArea(el, m);
+  el.querySelector('[data-chatbtn]').textContent = `Chat ${m.chat.length}`;
+}
+
+function go(v){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.dataset.v===v));
+  ['leagues','slate','picks','board','playoffs','profile'].forEach(x=>$('#view-'+x).classList.toggle('hide', x!==v));
+  if(v==='leagues') renderLeagues();
+  if(v==='picks') renderPicks();
+  if(v==='board') renderBoard();
+  if(v==='playoffs') renderPlayoffs();
+  if(v==='profile') renderProfile();
+}
+
+/* ---------- My Picks ---------- */
+function renderPicks(){
+  const now = $('#picksNow');
+  if(!L().picks.length){
+    now.innerHTML = `<div class="empty"><b>No picks yet</b>Head to the slate and back somebody before lock.</div>`;
+  } else {
+    now.innerHTML = L().picks.map(p=>{
+      const m = L().matchups.find(x=>x.id===p.matchupId);
+      const won = m.resolved ? p.side===m.winner : null;
+      const opp = p.side === 'tie' ? 'both players' : PLAYERS[m[p.side==='a'?'b':'a']].name;
+      const right = m.resolved
+        ? `<span class="net ${won?'pos':'neg'}" style="font-family:var(--mono);font-weight:700">${won?fmt(p.payout):'-'+p.stake}</span>`
+        : `${p.stake} pts @ ${p.multAtLock.toFixed(2)}x<br><b>-> ${Math.round(p.stake*p.multAtLock*streakBonus(L().user.streak))}</b>`;
+      return `<div class="pickrow">
+        <div><div class="pr-main"><span class="${p.side==='a'?'sideA':p.side==='b'?'sideB':'gold'}">${sideName(m, p.side)}</span> ${p.side==='tie'?'between':'over'} ${opp}</div>
+        <div class="pr-sub">${m.statCategory}</div></div>
+        <div class="pr-num">${right}</div></div>`;
+    }).join('');
+  }
+  const h = $('#picksHist');
+  h.innerHTML = L().user.history.length ? L().user.history.slice().reverse().map(wk=>`
+    <div class="week-block"><h4><span>Week ${wk.week} - ${wk.w}W-${wk.l}L</span>
+      <span class="net ${wk.net>=0?'pos':'neg'}" style="font-family:var(--mono)">${fmt(wk.net)}</span></h4>
+      ${wk.rows.map(r=>`<div class="pickrow"><div><div class="pr-main">${r.txt}</div><div class="pr-sub">${r.sub}</div></div>
+        <div class="pr-num"><span class="net ${r.net>=0?'pos':'neg'}" style="font-weight:700">${fmt(r.net)}</span></div></div>`).join('')}
+    </div>`).join('')
+    : `<div class="empty"><b>Nothing settled yet</b>Your past weeks will show up here.</div>`;
+}
+
+/* ---------- Leaderboard ---------- */
+function renderBoard(){
+  const l = L();
+  $('#boardTitle').textContent = `${l.name} - Season Standings`;
+  $('#boardNote').textContent = `Ranked by cumulative net points in ${l.name}. Code ${l.code} - ${l.memberCount} managers.`;
+  const rows = [
+    {id:'me', name:'You', col:'#FFC53D', season:l.user.season, streak:l.user.streak, w:l.user.w, l:l.user.l},
+    ...l.fakes.map(f=>({...f, name:FAKES.find(x=>x.id===f.id).name, col:FAKES.find(x=>x.id===f.id).col}))
+  ].sort((a,b)=>b.season-a.season);
+  $('#boardBody').innerHTML = rows.map((r,i)=>{
+    const acc = (r.w+r.l) ? Math.round(100*r.w/(r.w+r.l))+'%' : '-';
+    return `<tr class="${r.id==='me'?'me':''}"><td class="rank">${i+1}</td>
+      <td><span class="u-ava" style="background:${r.col}">${r.name.slice(0,2).toUpperCase()}</span>${r.name} ${r.id===l.ownerId?'<span class="owner-crown" title="League owner"><span class="emoji">&#128081;</span> OWN</span>':''}</td>
+      <td class="pts ${r.season>=0?'pos':'neg'}">${fmt(r.season)}</td>
+      <td class="acc" style="color:var(--text);font-weight:600">${acc}</td>
+      <td class="acc">${r.w}-${r.l}</td>
+      <td class="stk">STK ${r.streak}</td></tr>`;
+  }).join('');
+}
+
+/* ---------- Profile ---------- */
+function renderProfile(){
+  $('#pfSeason').textContent = fmt(L().user.season);
+  $('#pfRecord').textContent = `${L().user.w}-${L().user.l}`;
+  $('#pfAcc').textContent = (L().user.w+L().user.l) ? Math.round(100*L().user.w/(L().user.w+L().user.l))+'%' : '-';
+  $('#pfStreak').textContent = 'STK '+L().user.streak;
+  $('#badgeGrid').innerHTML = BADGES.map(b=>`
+    <div class="badge ${L().user.badges[b.id]?'':'off'}"><div class="bico">${b.ico}</div>
+    <div><div class="bname">${b.name}</div><div class="bdesc">${b.desc}</div></div></div>`).join('');
+}
+
+/* ---------- simulation ---------- */
+function simulateWeek(){
+  const l = L();
+  if(l.phase==='resolved'){ startNextWeek(); return; }
+
+  // resolve every matchup: stat lines drawn around the projection
+  l.matchups.forEach(m=>{
+    const {A,B,T} = sideTotals(m);
+    const favA = T ? A/T : 0.5;
+    const pA = clamp(0.5 + (favA-0.5)*0.4, 0.30, 0.70); // crowd is a weak signal
+    m.winner = Math.random() < pA ? 'a' : 'b';
+    const L = m.projectionLine;
+    const w = Math.round(L * rnd(0.85, 1.45) * 2)/2;
+    const l = Math.round(Math.min(w - 0.5, L * rnd(0.45, 1.05)) * 2)/2;
+    m.actualA = m.winner==='a' ? w : l;
+    m.actualB = m.winner==='b' ? w : l;
+    m.marginBonusHit = w >= L*1.2;
+    m.resolved = true;
+  });
+
+  // settle user picks in slate order, streak updates sequentially
+  let net = 0; const rows = []; let wW=0, wL=0;
+  l.picks.forEach(p=>{
+    const m = l.matchups.find(x=>x.id===p.matchupId);
+    const won = p.side===m.winner;
+    const meName = sideName(m, p.side), oppName = p.side === 'tie' ? 'both players' : PLAYERS[m[p.side==='a'?'b':'a']].name;
+    if(won){
+      const effMult = p.multAtLock + (m.marginBonusHit ? l.settings.marginBonus : 0);
+      p.payout = Math.round(p.stake * effMult * streakBonus(l.user.streak));
+      net += p.payout; l.user.streak++; l.user.w++; wW++;
+      if(p.multAtLock>=3) l.user.badges.contra = true;
+      if(l.user.streak>=3) l.user.badges.hot = true;
+      if(p.stake>=400) l.user.badges.roller = true;
+      rows.push({txt:`${meName} over ${oppName} WIN`, sub:`${p.stake} @ ${p.multAtLock.toFixed(2)}x${m.marginBonusHit?' +'+l.settings.marginBonus.toFixed(2)+'x':''}`, net:p.payout});
+    } else {
+      net -= p.stake; l.user.streak = 0; l.user.l++; wL++;
+      rows.push({txt:`${meName} over ${oppName} LOSS`, sub:`${p.stake} @ ${p.multAtLock.toFixed(2)}x`, net:-p.stake});
+    }
+  });
+  if((l.user.w+l.user.l)>=10 && l.user.w/(l.user.w+l.user.l)>=0.6) l.user.badges.sharp = true;
+  l.user.season += net;
+  l.user.history.push({week:l.week, net, w:wW, l:wL, rows});
+
+  // settle simulated users
+  l.fakePicks.forEach(fp=>{
+    const f = l.fakes.find(x=>x.id===fp.userId);
+    fp.picks.forEach(p=>{
+      const m = l.matchups.find(x=>x.id===p.matchupId);
+      const won = p.side===m.winner;
+      if(won){ const eff = mult(m,p.side)+(m.marginBonusHit?l.settings.marginBonus:0);
+        f.season += Math.round(p.stake*eff*streakBonus(f.streak)); f.streak++; f.w++; }
+      else { f.season -= p.stake; f.streak = 0; f.l++; }
+    });
+  });
+
+  l.phase = 'resolved';
+  DB.save(S);
+  showReveal(net, rows);
+}
+
+function startNextWeek(){
+  const l = L();
+  l.week++;
+  l.user.bankTotal = l.settings.bankroll; // fresh league bankroll every week, no carryover
+  l.picks = [];
+  l.matchups = genWeek(l.week, l.settings.matchups);
+  l.fakePicks = genFakePicks(l.matchups, l.settings);
+  l.lockTime = Date.now() + 1000*60*60*rnd(30,46);
+  l.phase = 'open';
+  DB.save(S);
+  refresh();
+  toast(`Week ${l.week} slate is live - fresh ${l.settings.bankroll}-point bankroll`);
+}
+
+/* ---------- reveal overlay ---------- */
+function showReveal(net, rows){
+  $('#rvTitle').textContent = `Week ${L().week} - Results`;
+  const box = $('#rvRows');
+  box.innerHTML = rows.length ? rows.map(r=>`
+    <div class="rv-row"><div class="rv-m">${r.txt}<small>${r.sub}</small></div>
+    <div class="rv-net ${r.net>=0?'net pos':'net neg'}">${fmt(r.net)}</div></div>`).join('')
+    : `<p style="color:var(--muted);text-align:center;padding:14px 0">You sat this week out. The league did not.</p>`;
+  $('#rvNet').textContent = fmt(net);
+  $('#rvNet').style.color = net>=0 ? 'var(--green)' : 'var(--loss)';
+  $('#rvTotal').classList.remove('in');
+  $('#reveal').classList.remove('hide');
+  // staggered reveal
+  const rws = box.querySelectorAll('.rv-row');
+  rws.forEach((r,i)=>setTimeout(()=>r.classList.add('in'), 250+i*450));
+  setTimeout(()=>{
+    $('#rvTotal').classList.add('in');
+    countUp($('#rvNet'), net);
+  }, 350+rws.length*450);
+}
+function countUp(el, target){
+  const t0 = performance.now(), dur = 900, from = 0;
+  (function step(t){
+    const k = Math.min(1,(t-t0)/dur), e = 1-Math.pow(1-k,3);
+    el.textContent = fmt(from + (target-from)*e);
+    if(k<1) requestAnimationFrame(step);
+  })(t0);
+}
+function closeReveal(){ $('#reveal').classList.add('hide'); refresh(); }
+
+/* ---------- ticker + live market drift ---------- */
+const TICK_VERBS = ['backed','hammered','sprinkled on','went heavy on','faded the crowd for'];
+function tickerSeed(){
+  const t = $('#tickerTrack'); t.innerHTML = '';
+  for(let i=0;i<14;i++) t.appendChild(tickerItem());
+}
+function tickerItem(){
+  const league = L();
+  const matchups = league?.matchups || [];
+  const active = matchups.filter(x=>!x.resolved);
+  if(!matchups.length){
+    const span = document.createElement('span');
+    span.textContent = 'Live league market loading';
+    return span;
+  }
+  const m = pick(active.length ? active : matchups);
+  const side = Math.random()<.5?'a':'b';
+  const span = document.createElement('span');
+  if(typeof API_MODE !== 'undefined' && API_MODE){
+    span.innerHTML = `<span class="t-user">${esc(league.name)}</span> has ${matchups.length} real MLB duels live - watch <span class="${side==='a'?'t-red':'t-blue'}">${esc(PLAYERS[m[side]].name)}</span>`;
+    return span;
+  }
+  const f = pick(FAKES);
+  span.innerHTML = `<span class="t-user">${f.name}</span> ${pick(TICK_VERBS)} <span class="${side==='a'?'t-red':'t-blue'}">${PLAYERS[m[side]].name}</span> <span class="t-amt">${Math.round(rnd(4,30))*10} pts</span>`;
+  return span;
+}
+function driftLoop(){
+  setInterval(()=>{
+    const league = L();
+    if(!S || !league || league.phase!=='open' || !league.matchups?.length) return;
+    const m = pick(league.matchups);
+    const d = Math.round(rnd(Math.max(10, league.settings.drift*.35), league.settings.drift*1.7));
+    Math.random()<.5 ? m.pubA += d : m.pubB += d;
+    if(Math.random() < 0.3){
+      m.chat.push(chatLine(m));
+      const cEl = document.querySelector(`[data-mid="${m.id}"]`);
+      if(cEl){
+        cEl.querySelector('[data-chatbtn]').textContent = `Chat ${m.chat.length}`;
+        if(!cEl.querySelector('[data-chat]').classList.contains('hide')) renderChatArea(cEl, m);
+      }
+    }
+    DB.save(S);
+    // live-update just this card's market numbers if it exists and user hasn't committed
+    const el = document.querySelector(`[data-mid="${m.id}"]`);
+    if(!el) return;
+    const {A,B,Tie,T} = sideTotals(m);
+    const pctA = Math.round(100*A/T);
+    const pctT = Math.round(100*Tie/T);
+    const pctB = Math.max(0, 100 - pctA - pctT);
+    el.querySelector('.tA').style.width = pctA+'%';
+    const labs = el.querySelector('.tug-labels');
+    labs.innerHTML = `<span>${pctA}% - ${A} pts</span><span>${pctT}% tie - ${Tie} pts</span><span>${pctB}% - ${B} pts</span>`;
+    const ms = el.querySelectorAll('[data-ms]');
+    const mA = mult(m,'a'), mB = mult(m,'b'), mT = mult(m,'tie');
+    ms[0].textContent = mA.toFixed(2)+'x'; ms[0].className = 'mult '+multClass(mA);
+    ms[1].textContent = mT.toFixed(2)+'x';
+    ms[2].textContent = mB.toFixed(2)+'x'; ms[2].className = 'mult '+multClass(mB);
+    if(el._sel && !L().picks.find(p=>p.matchupId===m.id)) renderStakeArea(el, m);
+    renderDetailArea(el, m);
+  }, 3500);
+}
+
+/* ---------- countdown ---------- */
+function countLoop(){
+  setInterval(()=>{
+    if(!S) return;
+    const league = L();
+    if(!league) return;
+    const el = $('#lockCount');
+    if(league.phase==='resolved'){ el.innerHTML = 'Slate settled - start next week'; return; }
+    const openLocks = (league.matchups || []).filter(m=>!isMatchupLocked(m)).map(matchupLockMs).filter(Number.isFinite);
+    let ms = openLocks.length ? Math.min(...openLocks) : 0;
+    const h = Math.floor(ms/3.6e6), mn = Math.floor(ms%3.6e6/6e4), sc = Math.floor(ms%6e4/1000);
+    el.innerHTML = ms ? `Next lock in <b>${h}h ${String(mn).padStart(2,'0')}m ${String(sc).padStart(2,'0')}s</b>` : '<b>All active games locked</b>';
+    document.querySelectorAll('[data-lock-count]').forEach(node=>{
+      const m = league.matchups.find(x=>x.id===node.dataset.lockCount);
+      if(m) node.textContent = lockCountdownText(m);
+    });
+  }, 1000);
+}
+
+/* ---------- onboarding ---------- */
+const OB = [
+  {h:'Welcome to Chalked', p:`Every week: a slate of MLB player duels and <span class="k">1,000 points</span>. Pick winners, stake points, climb the board. No rosters to manage.`},
+  {h:'The market pays contrarians', p:`Your payout multiplier is the inverse of your side's share of all staked points: <span class="k">mult = 1 / share, clamped 1.2x-4.0x</span>.<br><br>If 80% of points pile on the favorite, the other side pays up to 4x. Gold multipliers = the crowd left value on the table.`},
+  {h:'Stack your edge', p:`Win streaks add up to <span class="k">+50%</span> on every payout, and if your player beats the projection line by 20%+, tack on <span class="k">+0.25x</span>.<br><br>Your bankroll resets to a fresh 1,000 every week - conviction is the whole game.`},
+];
+let obI = 0;
+function showOnboard(){ obI = 0; obPaint(); $('#onboard').classList.remove('hide'); }
+function obPaint(){
+  $('#obBody').innerHTML = `<h3>${OB[obI].h}</h3><p>${OB[obI].p}</p>`;
+  $('#obDots').innerHTML = OB.map((_,i)=>`<span class="stepdot ${i===obI?'on':''}"></span>`).join('');
+  $('#obNext').textContent = obI===OB.length-1 ? "Let's go" : 'Next';
+}
+function obNext(){
+  if(++obI >= OB.length){ $('#onboard').classList.add('hide'); S.onboarded = true; DB.save(S); return; }
+  obPaint();
+}
+
+/* ---------- misc ---------- */
+let toastT;
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(()=>t.classList.remove('show'), 2600);
+}
+function refresh(){ renderBank(); renderLeagues(); renderSlate(); renderPicks(); renderBoard(); renderProfile(); }
+function enterApp(){
+  $('#landing').classList.add('hide');
+  $('#app').classList.remove('hide');
+  window.scrollTo(0,0);
+  if(!S.onboarded) showOnboard();
+}
+function resetDemo(){ DB.wipe(); seed(); refresh(); tickerSeed(); toast('Demo reset - fresh Week 1 slate'); }
+
+/* ---------- boot ---------- */
+(function boot(){
+  if(location.protocol.startsWith('http')){
+    S = {activeLeagueId:null, leagues:[], openLeagues:[], onboarded:true};
+    return;
+  }
+  S = migrateState(DB.load());
+  if(!S) seed();
+  DB.save(S);
+  refresh();
+  tickerSeed();
+  driftLoop();
+  countLoop();
+  go('leagues');
+  $('#view-profile').classList.add('hide');
+})();
+</script>
+<script>
+/* ---------- Backend adapter: real accounts, leagues, slates, picks ---------- */
+const API_MODE = location.protocol.startsWith('http');
+let apiUser = null;
+let apiAuthBusy = false;
+let apiUiLoopsStarted = false;
+let apiProfile = null;
+const leagueLoadCache = new Map();
+const LEAGUE_CACHE_MS = 20000;
+const leagueLoadInflight = new Map();
+
+function addAuthPanel(){
+  if($('#authPanel')) return;
+  const panel = document.createElement('div');
+  panel.id = 'authPanel';
+  panel.className = 'auth-card';
+  panel.innerHTML = `
+    <div class="auth-head">
+      <div class="auth-mark">
+        <div class="auth-logo">C</div>
+        <div><div class="auth-title">Chalked<i>.</i> Account</div><div class="auth-sub">Real leagues, real MLB slates, one clean login.</div></div>
+      </div>
+      <div class="auth-badge">LIVE BACKEND</div>
+    </div>
+    <div class="auth-grid">
+      <div class="auth-field"><label>Username or email</label><input id="authHandle" placeholder="username or email" autocomplete="username"></div>
+      <div class="auth-field"><label>Password</label><div class="password-wrap"><input id="authPassword" placeholder="8+ characters" type="password" autocomplete="current-password"><button class="pw-toggle" type="button" onclick="togglePassword('authPassword', this)">Show</button></div></div>
+      <div class="auth-field"><label>Email for new account</label><input id="authEmail" placeholder="you@email.com" autocomplete="email"></div>
+      <div class="auth-field"><label>Display name</label><input id="authDisplayName" placeholder="How leagues see you" autocomplete="nickname"></div>
+    </div>
+    <div class="auth-actions">
+      <button class="btn gold" id="authLoginBtn" type="button">Login</button>
+      <button class="btn" id="authRegisterBtn" type="button">Register</button>
+      <button class="btn ghost" id="authResetBtn" type="button">Email reset</button>
+      <button class="btn ghost hide" id="authConfirmResetBtn" type="button">Set new password</button>
+      <span id="authMsg" class="auth-msg">Register with your email, or log into an existing account.</span>
+    </div>
+    <div class="auth-foot"><b>Fresh account?</b> Fill username, password, email, and display name, then hit Register.</div>`;
+  document.querySelector('.hero').after(panel);
+  $('#authLoginBtn').addEventListener('click', apiLogin);
+  $('#authRegisterBtn').addEventListener('click', apiRegister);
+  $('#authResetBtn').addEventListener('click', requestPasswordReset);
+  $('#authConfirmResetBtn').addEventListener('click', confirmPasswordReset);
+  if(new URLSearchParams(location.search).get('reset')){
+    $('#authConfirmResetBtn').classList.remove('hide');
+    apiMsg('Enter your new password, then press Set new password.');
+  }
+  const verifyToken = new URLSearchParams(location.search).get('verify');
+  if(verifyToken) confirmEmailFromLink(verifyToken);
+}
+
+async function apiFetch(path, opts={}){
+  const res = await fetch(path, {
+    credentials:'include',
+    headers:{'Content-Type':'application/json', ...(opts.headers||{})},
+    ...opts
+  });
+  const text = await res.text();
+  let data = {};
+  try{
+    data = text ? JSON.parse(text) : {};
+  }catch(e){
+    throw new Error(`Invalid response from ${path} (${res.status})`);
+  }
+  if(!res.ok){
+    const detail = data.detail ? `: ${data.detail}` : '';
+    throw new Error(`${data.error || `Request failed (${res.status})`}${detail}`);
+  }
+  return data;
+}
+
+function apiMsg(msg){
+  const el = $('#authMsg');
+  const clean = msg || 'Something went wrong';
+  if(el) el.textContent = clean;
+  toast(clean);
+}
+
+function togglePassword(inputId, btn){
+  const input = document.getElementById(inputId);
+  if(!input) return;
+  const showing = input.type === 'text';
+  input.type = showing ? 'password' : 'text';
+  if(btn) btn.textContent = showing ? 'Show' : 'Hide';
+}
+
+function fileToDataUrl(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Could not read image'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadImageInput(input){
+  const file = input.files && input.files[0];
+  if(!file) return null;
+  const data_url = await fileToDataUrl(file);
+  if(!API_MODE) return data_url;
+  const data = await apiFetch('/api/uploads', {method:'POST', body:JSON.stringify({data_url, filename:file.name})});
+  return data.url;
+}
+
+async function uploadLeagueImage(input){
+  try{
+    const url = await uploadImageInput(input);
+    if(url){
+      toast('Image uploaded');
+      await updateSetting('avatar_url', url);
+    }
+  }catch(e){ toast(e.message); }
+}
+
+async function uploadToInput(fileInput, textInputId, previewId){
+  try{
+    const url = await uploadImageInput(fileInput);
+    if(!url) return;
+    const target = document.getElementById(textInputId);
+    if(target) target.value = url;
+    const preview = previewId ? document.getElementById(previewId) : null;
+    if(preview) preview.innerHTML = `<img src="${esc(url)}" alt="">`;
+    toast('Image uploaded');
+  }catch(e){ toast(e.message); }
+}
+
+async function apiLogin(){
+  apiAuthBusy = true;
+  try{
+    apiMsg('Logging in...');
+    const login = $('#authHandle').value.trim();
+    const password = $('#authPassword').value;
+    const data = await apiFetch('/api/auth/login', {method:'POST', body:JSON.stringify({login,password})});
+    apiUser = data.user;
+    await apiLoad();
+    apiEnterApp();
+  }catch(e){ apiMsg(e.message); }
+  finally{ apiAuthBusy = false; }
+}
+
+async function apiRegister(){
+  apiAuthBusy = true;
+  try{
+    apiMsg('Creating account...');
+    const handle = $('#authHandle').value.trim();
+    const password = $('#authPassword').value;
+    const email = $('#authEmail').value.trim();
+    const display_name = $('#authDisplayName').value.trim();
+    const data = await apiFetch('/api/auth/register', {method:'POST', body:JSON.stringify({handle,password,email,display_name})});
+    apiUser = data.user || data.session_user;
+    await apiLoad();
+    apiEnterApp();
+  }catch(e){ apiMsg(e.message); }
+  finally{ apiAuthBusy = false; }
+}
+
+async function requestPasswordReset(){
+  try{
+    const login = $('#authHandle').value.trim();
+    const data = await apiFetch('/api/auth/password-reset/request', {method:'POST', body:JSON.stringify({login})});
+    apiMsg(data.dev_link ? `Reset link ready in dev mode: ${data.dev_link}` : 'If that account has an email, a reset link was sent.');
+  }catch(e){ apiMsg(e.message); }
+}
+
+async function confirmPasswordReset(){
+  try{
+    const token = new URLSearchParams(location.search).get('reset');
+    const new_password = $('#authPassword').value;
+    await apiFetch('/api/auth/password-reset/confirm', {method:'POST', body:JSON.stringify({token,new_password})});
+    history.replaceState(null, '', location.pathname);
+    $('#authConfirmResetBtn').classList.add('hide');
+    apiMsg('Password reset. You can log in now.');
+  }catch(e){ apiMsg(e.message); }
+}
+
+async function confirmEmailFromLink(token){
+  try{
+    const data = await apiFetch('/api/auth/email/verify/confirm', {method:'POST', body:JSON.stringify({token})});
+    history.replaceState(null, '', location.pathname);
+    apiUser = data.user || apiUser;
+    apiMsg('Email verified. You are good to go.');
+  }catch(e){ apiMsg(e.message); }
+}
+
+function camelSettings(s){
+  return {
+    bankroll:s.bankroll, minStake:s.min_stake, maxStake:s.max_stake,
+    minMult:s.min_mult, maxMult:s.max_mult, streakStep:s.streak_step,
+    streakCap:s.streak_cap, marginBonus:s.margin_bonus,
+    matchups:s.matchups_per_slate, drift:s.drift,
+    playoffEnabled:!!s.playoff_enabled, playoffSize:s.playoff_size,
+    seasonWeeks:s.season_weeks, playoffWeeks:s.playoff_weeks,
+  };
+}
+
+function snakeSetting(key){
+  return {
+    minStake:'min_stake', maxStake:'max_stake', minMult:'min_mult', maxMult:'max_mult',
+    streakStep:'streak_step', streakCap:'streak_cap', marginBonus:'margin_bonus',
+    matchups:'matchups_per_slate', playoffEnabled:'playoff_enabled', playoffSize:'playoff_size',
+    seasonWeeks:'season_weeks', playoffWeeks:'playoff_weeks'
+  }[key] || key;
+}
+
+function mapLeague(l){
+  return {
+    id:l.id, code:l.code, name:l.name, desc:l.description, ownerId:l.owner_id, avatarUrl:l.avatar_url,
+    ownerName:l.role === 'owner' ? 'You' : 'League Owner',
+    memberCount:l.member_count, settings:camelSettings(l.settings), playoffs:l.playoffs,
+    myProfile:l.my_profile || {},
+    week:1, phase:'open', lockTime:Date.now()+3600000,
+    matchups:[], fakePicks:[], picks:[],
+    user:{bankTotal:l.settings.bankroll, streak:0, season:0, w:0, l:0, history:[], badges:{}},
+    fakes:[], boardRows:[], activity:[], api:l
+  };
+}
+
+function mapApiMatchup(m){
+  ['a','b'].forEach(side=>{
+    const p = m.players[side];
+    if(!PLAYERS[p.id]) PLAYERS[p.id] = {name:p.name, team:p.team, pos:p.position, grp:m.stat_key, mlb:p.external_id};
+    else PLAYERS[p.id] = {...PLAYERS[p.id], name:p.name, team:p.team, pos:p.position, mlb:p.external_id || PLAYERS[p.id].mlb};
+  });
+  const total = m.market.total || 1;
+  return {
+    id:m.id, grp:m.stat_key, statCategory:(m.stat_label || '').replace('This Week','Game'), unit:m.unit,
+    a:m.players.a.id, b:m.players.b.id, projectionLine:m.projection_line,
+    blurb:'Same-day MLB matchup generated from the active league slate.',
+    lastA:m.last5?.a || [], lastB:m.last5?.b || [], pubA:m.market.a, pubB:m.market.b, pubTie:m.market.tie || 0, market:m.market,
+    resolved:m.status !== 'open', actualA:m.actual_a, actualB:m.actual_b,
+    winner:m.winner_side, marginBonusHit:m.margin_bonus_hit,
+    game:m.game || {},
+    playerGames:{a:m.players.a.game || m.game || {}, b:m.players.b.game || m.game || {}},
+    playerInfo:{a:m.players.a, b:m.players.b},
+    liveStats:m.live_stats || {a:0,b:0},
+    audit:m.audit || {},
+    chat:[]
+  };
+}
+
+function mapPick(p){
+  return {
+    id:p.id, matchupId:p.matchup_id, side:p.side, stake:p.stake,
+    multAtLock:p.mult_at_lock, payout:p.payout, status:p.status
+  };
+}
+
+function applyBoard(l, board){
+  l.boardRows = board.rows || [];
+  const mine = l.boardRows.find(r=>r.user_id === apiUser.id);
+  if(mine){
+    l.user.season = mine.season;
+    l.user.streak = mine.streak;
+    l.user.w = mine.wins;
+    l.user.l = mine.losses;
+  }
+  l.fakes = l.boardRows.filter(r=>r.user_id !== apiUser.id).map(r=>({
+    id:r.user_id, name:r.display_name || r.handle, avatarUrl:r.avatar_url, season:r.season, streak:r.streak, w:r.wins, l:r.losses,
+    col:'#6E82D9'
+  }));
+}
+
+async function apiLoad(){
+  const [leagues, profile, sessions] = await Promise.all([apiFetch('/api/leagues'), apiFetch('/api/profile'), apiFetch('/api/auth/sessions')]);
+  apiProfile = profile;
+  apiProfile.sessions = sessions.sessions || [];
+  S = {
+    activeLeagueId: S?.activeLeagueId,
+    leagues:(leagues.mine || []).map(mapLeague),
+    openLeagues:(leagues.open || []).map(mapLeague),
+    joinedOpen:{}, onboarded:true
+  };
+  const inviteCode = new URLSearchParams(location.search).get('join');
+  if(inviteCode && !S.leagues.some(l=>l.code===inviteCode.toUpperCase())){
+    try{
+      await apiFetch(`/api/leagues/${inviteCode}/join`, {method:'POST', body:JSON.stringify({code:inviteCode})});
+      history.replaceState(null, '', location.pathname);
+      return apiLoad();
+    }catch(e){ toast(e.message); }
+  }
+  if(!S.leagues.length && S.openLeagues.length){
+    await apiFetch(`/api/leagues/${S.openLeagues[0].id}/join`, {method:'POST', body:'{}'});
+    return apiLoad();
+  }
+  if(!S.activeLeagueId || !S.leagues.some(l=>l.id===S.activeLeagueId)) S.activeLeagueId = S.leagues[0]?.id;
+  if(S.activeLeagueId) await apiLoadLeague(S.activeLeagueId, true);
+  refresh();
+}
+
+async function apiLoadLeague(id, force=false){
+  S.activeLeagueId = id;
+  const l = S.leagues.find(x=>x.id===id);
+  if(!l) return;
+  if(force) leagueLoadCache.delete(id);
+  const cached = leagueLoadCache.get(id);
+  if(!force && cached && Date.now() - cached.at < LEAGUE_CACHE_MS){
+    Object.assign(l, cached.data);
+    return;
+  }
+  if(leagueLoadInflight.has(id)){
+    if(!force) return leagueLoadInflight.get(id);
+    try{ await leagueLoadInflight.get(id); }catch(e){}
+  }
+  const loading = (async()=>{
+  const [slate, picks, board, playoffs, activity] = await Promise.all([
+    apiFetch(`/api/leagues/${id}/slate`),
+    apiFetch(`/api/leagues/${id}/picks`),
+    apiFetch(`/api/leagues/${id}/leaderboard`),
+    apiFetch(`/api/leagues/${id}/playoffs`),
+    apiFetch(`/api/leagues/${id}/activity`)
+  ]);
+    const loaded = {
+      week: slate.slate.week,
+      phase: slate.slate.status === 'open' ? 'open' : 'resolved',
+      lockTime: Date.parse(slate.slate.locks_at),
+      matchups: slate.slate.matchups.map(mapApiMatchup),
+      picks: picks.picks.map(mapPick),
+      playoffs,
+      activity: activity.events || []
+    };
+    Object.assign(l, loaded);
+    l.user.bankTotal = l.settings.bankroll;
+    applyBoard(l, board);
+    const boardRows = l.boardRows || [];
+    const user = {...l.user};
+    leagueLoadCache.set(id, {at:Date.now(), data:{...loaded, boardRows, user}});
+  })();
+  leagueLoadInflight.set(id, loading);
+  try{ await loading; }
+  finally{ leagueLoadInflight.delete(id); }
+}
+
+function apiEnterApp(){
+  $('#landing').classList.add('hide');
+  $('#app').classList.remove('hide');
+  $('#logoutBtn')?.classList.remove('hide');
+  $('#onboard').classList.add('hide');
+  window.scrollTo(0,0);
+  go('leagues');
+  startApiUiLoops();
+}
+
+function askLogout(){
+  $('#logoutModal')?.classList.remove('hide');
+}
+
+function closeLogout(){
+  $('#logoutModal')?.classList.add('hide');
+}
+
+async function confirmLogout(){
+  closeLogout();
+  await apiLogout();
+}
+
+async function apiLogout(){
+  try{
+    await apiFetch('/api/auth/logout', {method:'POST', body:'{}'});
+  }catch(e){
+    // Still clear local UI state if the server session is already gone.
+  }
+  apiUser = null;
+  apiProfile = null;
+  S = {activeLeagueId:null, leagues:[], openLeagues:[], onboarded:true};
+  leagueLoadCache.clear();
+  leagueLoadInflight.clear();
+  $('#app').classList.add('hide');
+  $('#landing').classList.remove('hide');
+  closeLogout();
+  $('#logoutBtn')?.classList.add('hide');
+  addAuthPanel();
+  $('#authHandle').value = '';
+  $('#authPassword').value = '';
+  $('#authEmail').value = '';
+  $('#authDisplayName').value = '';
+  apiMsg('Logged out. Create your fresh account or log back in.');
+  window.scrollTo(0,0);
+}
+
+function startApiUiLoops(){
+  if(apiUiLoopsStarted || !L()) return;
+  apiUiLoopsStarted = true;
+  tickerSeed();
+  countLoop();
+}
+
+enterApp = async function(){
+  if(!API_MODE) return apiEnterApp();
+  try{
+    if(!apiUser){
+      const me = await apiFetch('/api/me');
+      apiUser = me.user;
+      await apiLoad();
+    }
+    apiEnterApp();
+  }catch(e){
+    addAuthPanel();
+    apiMsg('Login first, then enter the app.');
+  }
+};
+
+isOwner = function(l=L()){ return !!apiUser && l && l.ownerId === apiUser.id; };
+sideTotals = function(m){
+  if(m.market) return {A:m.market.a, B:m.market.b, Tie:m.market.tie || 0, T:m.market.total};
+  let A = m.pubA, B = m.pubB, Tie = m.pubTie || 80;
+  L().picks.forEach(p => { if(p.matchupId===m.id) p.side==='a'?A+=p.stake:p.side==='tie'?Tie+=p.stake:B+=p.stake; });
+  return {A,B,Tie,T:A+B+Tie};
+};
+
+renderLeagues = function(){
+  const l = L();
+  if(!l){ $('#leagueList').innerHTML = `<div class="empty"><b>Login required</b>Use the account box on the landing page.</div>`; return; }
+  $('#leagueAvatarBig').innerHTML = leagueAvatarHTML(l, 'league-avatar-lg');
+  $('#leagueNameBig').textContent = l.name;
+  $('#leagueOwnerBig').classList.toggle('hide', !isOwner(l));
+  $('#leagueDesc').textContent = l.desc;
+  $('#leagueMeta').innerHTML = leagueChips(l);
+  $('#leagueDash').innerHTML = renderLeagueDashboard(l);
+  $('#leagueList').innerHTML = S.leagues.map(x=>leagueCard(x, true)).join('');
+  $('#openLeagueList').innerHTML = S.openLeagues.map(x=>leagueCard(x, false)).join('')
+    || `<div class="empty" style="grid-column:1/-1"><b>No open leagues</b>Create one or join by code.</div>`;
+  renderLeagueSettings();
+};
+
+leagueCard = function(l, joined){
+  const active = joined && l.id===S.activeLeagueId;
+  const owner = isOwner(l);
+  return `<div class="league-card ${active?'active':''}">
+    <div class="league-card-head">${leagueAvatarHTML(l)}
+      <div><h3>${esc(l.name)} ${owner?'<span class="owner-crown" title="You own this league"><span class="emoji">&#128081;</span> OWN</span>':''}</h3>
+      <p>${esc(l.desc)}</p></div>
+    </div>
+    <div class="league-meta">${leagueChips(l)}</div>
+    <div class="actions">
+      ${joined ? `<button class="btn ${active?'gold':''}" onclick="switchLeague('${l.id}')">${active?'Active':'Switch'}</button>`
+        : `<button class="btn gold" onclick="joinOpenLeague('${l.id}')">Join</button>`}
+      <button class="btn ghost" onclick="copyLeagueCode('${l.code}')">Invite</button>
+    </div>
+  </div>`;
+};
+
+switchLeague = async function(id){
+  if(!S.leagues.some(l=>l.id===id)) return;
+  await apiLoadLeague(id);
+  refresh();
+  toast(`Loaded ${L().name}`);
+};
+
+joinOpenLeague = async function(id){
+  try{
+    await apiFetch(`/api/leagues/${id}/join`, {method:'POST', body:'{}'});
+    await apiLoad();
+    toast(`Joined ${L().name}`);
+  }catch(e){ toast(e.message); }
+};
+
+joinByCode = async function(){
+  try{
+    const code = ($('#joinCode').value || '').trim().toUpperCase();
+    if(!code) return toast('Enter a league code');
+    await apiFetch('/api/leagues/by-code/join'.replace('by-code', code), {method:'POST', body:JSON.stringify({code})});
+    await apiLoad();
+    $('#joinCode').value = '';
+    toast(`Joined ${L().name}`);
+  }catch(e){ toast(e.message); }
+};
+
+function renderPlayoffPanel(l){
+  if(!l.playoffs || !l.playoffs.enabled) return `<div class="playoff-panel"><b>Playoffs off</b><p style="color:var(--muted);font-size:13px;margin-top:4px">Turn playoffs on to show the bracket picture.</p></div>`;
+  const seeds = l.playoffs.seeds || [];
+  const rounds = l.playoffs.rounds || [];
+  return `<div class="playoff-panel">
+    <div class="section-h" style="margin-top:0">Playoff Picture</div>
+    <div class="league-meta">
+      <span class="league-chip"><b>${l.playoffs.size}</b> teams</span>
+      <span class="league-chip"><b>W${l.playoffs.season_weeks+1}</b> starts</span>
+      <span class="league-chip"><b>${l.playoffs.playoff_weeks}</b> weeks</span>
+    </div>
+    <div class="bracket">
+      ${rounds.map(r=>`<div class="bracket-round"><h4>${esc(r.name)}</h4>${r.matchups.map(playoffGameHTML).join('')}</div>`).join('') || '<div class="empty"><b>Bracket forming</b>Seeds will appear once the league has enough managers.</div>'}
+    </div>
+    <div class="section-h" style="font-size:16px;margin-top:18px">Current Seeds</div>
+    <div class="alias-list">
+      ${seeds.map(s=>`<div class="alias-card"><b>#${s.rank} ${esc(s.display_name || s.handle)}</b><div style="color:var(--muted);font-size:12px">${fmt(s.season)} pts - ${s.wins}-${s.losses}</div></div>`).join('') || '<div class="empty"><b>No seeds yet</b>Standings will fill this in.</div>'}
+    </div>
+    ${playoffBubbleHTML(l)}
+  </div>`;
+}
+
+function playoffGameHTML(g){
+  const aWon = g.winner_user_id && g.winner_user_id === g.player_a.user_id;
+  const bWon = g.winner_user_id && g.winner_user_id === g.player_b.user_id;
+  return `<div class="bracket-game">
+    <div class="seed-line ${aWon?'win':''} ${bWon?'out':''}"><b>#${g.seed_a || '-'} ${esc(g.player_a.display_name || g.player_a.handle || 'TBD')}</b><span>${g.status==='settled'?g.score_a:''}</span></div>
+    <div class="seed-line ${bWon?'win':''} ${aWon?'out':''}"><b>#${g.seed_b || '-'} ${esc(g.player_b.display_name || g.player_b.handle || 'TBD')}</b><span>${g.status==='settled'?g.score_b:''}</span></div>
+    <div style="font-size:11px;color:var(--faint);margin-top:6px">Week ${g.week}${g.status==='settled'?' - final':' - pending'}</div>
+  </div>`;
+}
+
+function playoffBubbleHTML(l){
+  const bubble = l.playoffs?.bubble || [];
+  if(!bubble.length) return '';
+  return `<div class="section-h" style="font-size:16px;margin-top:18px">Out Looking In</div>
+    <div class="bubble-list">${bubble.map(s=>`<div class="alias-card"><b>#${s.rank} ${esc(s.display_name || s.handle)}</b><div style="color:var(--muted);font-size:12px">${fmt(s.season)} pts - ${s.wins}-${s.losses}</div></div>`).join('')}</div>`;
+}
+
+function renderPlayoffs(){
+  const target = $('#playoffView');
+  if(!target) return;
+  target.innerHTML = renderPlayoffPanel(L());
+}
+
+createLeague = async function(){
+  try{
+    const n = S.leagues.filter(l=>isOwner(l)).length + 1;
+    const body = {
+      name: ($('#newLeagueName')?.value || `My League ${n}`).trim(),
+      description:'A real backend-powered Chalked league.',
+      avatar_url: ($('#newLeagueAvatar')?.value || '').trim() || null,
+      season_weeks: parseInt($('#newSeasonWeeks')?.value || '10', 10),
+      playoff_enabled: $('#newPlayoffsEnabled')?.checked ? 1 : 0,
+      playoff_size: parseInt($('#newPlayoffSize')?.value || '8', 10),
+      playoff_weeks: Math.max(1, Math.ceil(Math.log2(parseInt($('#newPlayoffSize')?.value || '8', 10))))
+    };
+    const data = await apiFetch('/api/leagues', {method:'POST', body:JSON.stringify(body)});
+    S.activeLeagueId = data.league.id;
+    await apiLoad();
+    S.activeLeagueId = data.league.id;
+    if(data.league && !S.leagues.some(l=>l.id===data.league.id)){
+      S.leagues.unshift(mapLeague(data.league));
+    }
+    await apiLoadLeague(data.league.id, true);
+    refresh(); go('slate');
+    toast('Created league. The crown is yours.');
+  }catch(e){ toast(e.message); }
+};
+
+updateSetting = async function(key, value){
+  try{
+    if(!isOwner()) return;
+    let next = value;
+    if(key === 'playoffEnabled') next = value ? 1 : 0;
+    else if(!['avatar_url','name','description'].includes(key)) next = ['matchups','playoffSize','seasonWeeks','playoffWeeks'].includes(key) ? parseInt(value,10) : parseFloat(value);
+    await apiFetch(`/api/leagues/${L().id}/settings`, {method:'PATCH', body:JSON.stringify({[snakeSetting(key)]:next})});
+    await apiLoad();
+  }catch(e){ toast(e.message); }
+};
+
+commitPick = async function(mid){
+  try{
+    const el = document.querySelector(`[data-mid="${mid}"]`);
+    const side = el._sel; if(!side) return;
+    const m = L().matchups.find(x=>x.id===mid);
+    if(isMatchupLocked(m)){ toast('That matchup is locked'); return; }
+    const stake = +el.querySelector('input[type=number]').value || 0;
+    await apiFetch(`/api/leagues/${L().id}/picks`, {method:'POST', body:JSON.stringify({matchup_id:mid, side, stake})});
+    await apiLoadLeague(L().id, true);
+    refresh();
+    toast('Pick locked');
+  }catch(e){ toast(e.message); }
+};
+
+removePick = async function(mid){
+  try{
+    const p = L().picks.find(p=>p.matchupId===mid);
+    if(!p) return;
+    await apiFetch(`/api/leagues/${L().id}/picks/${p.id}`, {method:'DELETE'});
+    await apiLoadLeague(L().id, true);
+    refresh();
+  }catch(e){ toast(e.message); }
+};
+
+renderBoard = function(){
+  const l = L();
+  $('#boardTitle').textContent = `${l.name} - Season Standings`;
+  $('#boardNote').textContent = `Ranked by cumulative net points in ${l.name}. Code ${l.code} - ${l.memberCount} managers.`;
+  const rows = (l.boardRows || []).slice().sort((a,b)=>b.season-a.season);
+  $('#boardBody').innerHTML = rows.map((r,i)=>{
+    const acc = (r.wins+r.losses) ? Math.round(100*r.wins/(r.wins+r.losses))+'%' : '-';
+    const name = r.display_name || r.handle;
+    const avatar = r.avatar_url ? `<span class="u-ava" style="background:#243040"><img src="${esc(r.avatar_url)}" style="width:100%;height:100%;border-radius:50%;object-fit:cover" onerror="this.remove()"></span>` : `<span class="u-ava" style="background:${r.user_id===apiUser.id?'#FFC53D':'#6E82D9'}">${name.slice(0,2).toUpperCase()}</span>`;
+    return `<tr class="${r.user_id===apiUser.id?'me':''}"><td class="rank">${i+1}</td>
+      <td>${avatar}${esc(name)} ${r.role==='owner'?'<span class="owner-crown"><span class="emoji">&#128081;</span> OWN</span>':''}</td>
+      <td class="pts ${r.season>=0?'pos':'neg'}">${fmt(r.season)}</td>
+      <td class="acc" style="color:var(--text);font-weight:600">${acc}</td>
+      <td class="acc">${r.wins}-${r.losses}</td>
+      <td class="stk">STK ${r.streak}</td></tr>`;
+  }).join('');
+};
+
+renderProfile = function(){
+  const u = L().user;
+  $('#pfSeason').textContent = fmt(u.season);
+  $('#pfRecord').textContent = `${u.w}-${u.l}`;
+  $('#pfAcc').textContent = (u.w+u.l) ? Math.round(100*u.w/(u.w+u.l))+'%' : '-';
+  $('#pfStreak').textContent = 'STK '+u.streak;
+  const p = apiProfile?.user || apiUser || {};
+  const avatar = p.avatar_url ? `<img src="${esc(p.avatar_url)}" alt="">` : initials(p.display_name || p.handle || 'You');
+  const profilePic = p.avatar_url ? `<img src="${esc(p.avatar_url)}" alt="">` : 'IMG';
+  $('#profileEditor').innerHTML = `<div class="profile-editor">
+    <div class="profile-head"><div class="profile-avatar">${avatar}</div><div><h3>${esc(p.display_name || p.handle || 'You')}</h3><p style="color:var(--muted);font-size:13px">@${esc(p.handle || '')} ${p.email_verified_at?'<span class="chip live">email verified</span>':'<span class="chip">email unverified</span>'}</p></div></div>
+    <div class="form-grid">
+      <div class="form-field"><label>Username</label><input id="profileHandle" value="${esc(p.handle || '')}"></div>
+      <div class="form-field"><label>Display name</label><input id="profileDisplayName" value="${esc(p.display_name || '')}"></div>
+      <div class="form-field" style="grid-column:1/-1"><label>Email login</label><input id="profileEmail" value="${esc(p.email || '')}" placeholder="you@example.com"></div>
+      <div class="form-field"><label>Profile picture upload</label>
+        <input class="file-input" id="profileAvatarFile" type="file" accept="image/*" onchange="uploadToInput(this,'profileAvatarUrl','profileAvatarPic')">
+        <label class="image-upload" for="profileAvatarFile"><span class="pic" id="profileAvatarPic">${profilePic}</span><span><b>Upload profile image</b><small>Saved when you press save</small></span></label>
+      </div>
+      <div class="form-field" style="grid-column:1/-1"><label>Profile picture URL</label><input id="profileAvatarUrl" value="${esc(p.avatar_url || '')}" placeholder="/uploads/..."></div>
+    </div>
+    <button class="btn gold" style="margin-top:10px" onclick="saveProfile()">Save profile</button>
+    <button class="btn ghost" style="margin-top:10px" onclick="sendVerificationEmail()">Send verification email</button>
+    <div class="section-h" style="font-size:16px;margin-top:18px">Account Security</div>
+    <div class="alias-card">
+      <div class="form-grid">
+        <div class="form-field"><label>Current password</label><div class="password-wrap"><input id="currentPassword" type="password" autocomplete="current-password"><button class="pw-toggle" type="button" onclick="togglePassword('currentPassword', this)">Show</button></div></div>
+        <div class="form-field"><label>New password</label><div class="password-wrap"><input id="newPassword" type="password" autocomplete="new-password"><button class="pw-toggle" type="button" onclick="togglePassword('newPassword', this)">Show</button></div></div>
+      </div>
+      <button class="btn" style="margin-top:10px" onclick="changePassword()">Change password</button>
+      <button class="btn ghost" style="margin-top:10px" onclick="logoutOtherSessions()">Log out other sessions</button>
+      <small style="display:block;color:var(--muted);margin-top:8px">Changing your password keeps this session and signs out the others.</small>
+    </div>
+    <div class="section-h" style="font-size:16px;margin-top:18px">Active Sessions</div>
+    <div class="alias-list">${(apiProfile?.sessions || []).map(s=>`<div class="alias-card">
+      <b>${s.current?'Current session':'Signed-in device'}</b>
+      <div style="color:var(--muted);font-size:12px;margin-top:5px">${esc((s.user_agent || 'Unknown browser').slice(0,90))}</div>
+      <div style="color:var(--faint);font-size:11.5px;margin-top:6px">Last seen ${s.last_seen_at ? new Date(s.last_seen_at).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : 'unknown'}</div>
+    </div>`).join('') || '<div class="empty"><b>No sessions found</b>Login again if this looks wrong.</div>'}</div>
+    <div class="section-h" style="font-size:16px;margin-top:18px">League Names</div>
+    <div class="alias-list">${(apiProfile?.league_profiles || []).map(lp=>`<div class="alias-card">
+      <b>${esc(lp.league_name)}</b>
+      <div class="form-field" style="margin-top:8px"><label>Name in league</label><input id="aliasName-${lp.league_id}" value="${esc(lp.display_name || '')}"></div>
+      <div class="form-field" style="margin-top:8px"><label>League avatar upload</label>
+        <input class="file-input" id="aliasFile-${lp.league_id}" type="file" accept="image/*" onchange="uploadToInput(this,'aliasAvatar-${lp.league_id}','aliasPic-${lp.league_id}')">
+        <label class="image-upload" for="aliasFile-${lp.league_id}"><span class="pic" id="aliasPic-${lp.league_id}">${lp.avatar_url?`<img src="${esc(lp.avatar_url)}" alt="">`:'IMG'}</span><span><b>Upload alias image</b><small>Saved with this league profile</small></span></label>
+      </div>
+      <div class="form-field" style="margin-top:8px"><label>League avatar URL</label><input id="aliasAvatar-${lp.league_id}" value="${esc(lp.avatar_url || '')}"></div>
+      <button class="btn" style="margin-top:8px" onclick="saveLeagueAlias('${lp.league_id}')">Save league profile</button>
+    </div>`).join('')}</div>
+  </div>`;
+  $('#badgeGrid').innerHTML = `<div class="empty"><b>Backend profile is live</b>Badges are next after real stat settlement.</div>`;
+};
+
+async function saveProfile(){
+  try{
+    apiProfile = await apiFetch('/api/profile', {method:'PATCH', body:JSON.stringify({
+      handle: $('#profileHandle').value.trim(),
+      email: $('#profileEmail').value.trim(),
+      display_name: $('#profileDisplayName').value.trim(),
+      avatar_url: $('#profileAvatarUrl').value.trim()
+    })});
+    apiUser = apiProfile.user;
+    renderProfile();
+    toast('Profile saved');
+  }catch(e){ toast(e.message); }
+}
+
+async function changePassword(){
+  try{
+    const current_password = $('#currentPassword')?.value || '';
+    const new_password = $('#newPassword')?.value || '';
+    await apiFetch('/api/auth/password', {method:'POST', body:JSON.stringify({current_password, new_password})});
+    $('#currentPassword').value = '';
+    $('#newPassword').value = '';
+    const sessions = await apiFetch('/api/auth/sessions');
+    apiProfile.sessions = sessions.sessions || [];
+    renderProfile();
+    toast('Password updated');
+  }catch(e){ toast(e.message); }
+}
+
+async function logoutOtherSessions(){
+  try{
+    const result = await apiFetch('/api/auth/logout-others', {method:'POST', body:'{}'});
+    const sessions = await apiFetch('/api/auth/sessions');
+    apiProfile.sessions = sessions.sessions || [];
+    renderProfile();
+    toast(`Logged out ${result.removed || 0} other sessions`);
+  }catch(e){ toast(e.message); }
+}
+
+async function sendVerificationEmail(){
+  try{
+    const data = await apiFetch('/api/auth/email/verify/request', {method:'POST', body:'{}'});
+    toast(data.already_verified ? 'Email already verified' : data.dev_link ? `Verification link ready: ${data.dev_link}` : 'Verification email sent');
+  }catch(e){ toast(e.message); }
+}
+
+async function saveLeagueAlias(id){
+  try{
+    apiProfile = await apiFetch(`/api/leagues/${id}/profile`, {method:'PATCH', body:JSON.stringify({
+      display_name: $(`#aliasName-${id}`).value.trim(),
+      avatar_url: $(`#aliasAvatar-${id}`).value.trim()
+    })});
+    renderProfile();
+    toast('League profile saved');
+  }catch(e){ toast(e.message); }
+}
+
+if(API_MODE){
+  addAuthPanel();
+  apiFetch('/api/me').then(async me=>{
+    apiUser = me.user;
+    await apiLoad();
+    apiEnterApp();
+  }).catch(()=>{
+    if(apiAuthBusy || apiUser || !$('#app').classList.contains('hide')) return;
+    apiMsg('Login to use real leagues.');
+  });
+  window.apiLogin = apiLogin;
+  window.apiRegister = apiRegister;
+  window.apiLogout = apiLogout;
+  window.askLogout = askLogout;
+  window.closeLogout = closeLogout;
+  window.confirmLogout = confirmLogout;
+  window.apiFetch = apiFetch;
+  window.apiLoad = apiLoad;
+}
+</script>
+</body>
+</html>

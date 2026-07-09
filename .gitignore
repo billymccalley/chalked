@@ -1,0 +1,22 @@
+# Python/runtime
+__pycache__/
+*.py[cod]
+
+# Local data
+*.sqlite
+*.sqlite3
+*.db
+backend/static/uploads/
+
+# Secrets and local env
+.env
+.env.*
+!.env.example
+
+# Local workspace artifacts
+outputs/
+work/
+
+# OS/editor
+.DS_Store
+Thumbs.db
