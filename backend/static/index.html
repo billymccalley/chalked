@@ -24,7 +24,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.45;
+body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.45;overflow-x:hidden;
   background-image:radial-gradient(1100px 480px at 75% -8%, rgba(46,217,138,.08), transparent 60%),
                    radial-gradient(900px 420px at 8% -5%, rgba(255,90,72,.07), transparent 55%),
                    linear-gradient(180deg, #0C1118 0%, #0B0F14 340px);background-attachment:fixed;}
@@ -490,8 +490,8 @@ table.board{width:100%;border-collapse:collapse;background:linear-gradient(180de
 @media (max-width:840px){ .hero{grid-template-columns:1fr}.grid{grid-template-columns:1fr} .prof-grid{grid-template-columns:1fr 1fr} .explain{grid-template-columns:1fr} }
 @media (max-width:620px){ .league-hero-main{flex-direction:column}.league-dash{grid-template-columns:1fr}.mini-bars,.mini-standings{grid-column:auto}.auth-head{flex-direction:column}.auth-grid{grid-template-columns:1fr}.auth-msg{margin-left:0;max-width:none}.hero-actions{align-items:stretch}.hero-actions .cta,.hero-link{width:100%;text-align:center}.demo-vs{grid-template-columns:1fr}.demo-vs .vs{text-align:left} }
 @media (max-width:560px){
-  .tabs{overflow-x:auto;scrollbar-width:none}
-  .tab{font-size:15px;padding:8px 10px 10px;white-space:nowrap}
+  .tabs{flex-wrap:wrap;gap:4px 6px}
+  .tab{font-size:14px;padding:8px 9px 9px;white-space:normal}
   .slate-head h2{font-size:24px}
   .bankbar{top:49px}
   .league-title{font-size:23px}
