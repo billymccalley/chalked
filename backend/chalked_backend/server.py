@@ -20,6 +20,7 @@ from urllib.parse import parse_qs, urlparse
 
 from .db import db_path, init_db, transaction
 from .security import new_id
+from .share_cards import render_matchup_card_png
 from .storage import upload_backup, upload_image, upload_storage_status
 from .services import (
     ApiError,
@@ -175,18 +176,32 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def write_matchup_share(self, path: str) -> None:
-        match = re.fullmatch(r"/share/matchup/(?P<matchup_id>[^/]+)", path)
+        match = re.fullmatch(r"/share/matchup/(?P<matchup_id>[^/]+)(?P<card>/card\.png)?", path)
         if not match:
             raise ApiError(404, "Share link not found")
+        pick_id = (self.query().get("pick") or [None])[0]
         with transaction() as conn:
             ensure_seeded(conn)
-            share = public_matchup_share(conn, match.group("matchup_id"))
+            share = public_matchup_share(conn, match.group("matchup_id"), pick_id)
+        if match.group("card"):
+            body = render_matchup_card_png(share, STATIC_ROOT)
+            self.send_response(200)
+            self.send_common_headers()
+            self.send_header("Content-Type", "image/png")
+            self.send_header("Cache-Control", "public, max-age=300")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         public = os.environ.get("CHALKED_PUBLIC_URL", "").strip().rstrip("/")
         if not public:
             proto = "https" if self.is_https() else "http"
             public = f"{proto}://{self.headers.get('host', '127.0.0.1:8080')}".rstrip("/")
-        canonical = f"{public}{path}?league={share['league_id']}"
-        image = f"{public}/assets/chalked-preview-v2.png"
+        query_parts = [f"league={share['league_id']}"]
+        if share.get("pick"):
+            query_parts.append(f"pick={share['pick']['id']}")
+        canonical = f"{public}/share/matchup/{share['id']}?{'&'.join(query_parts)}"
+        image = f"{public}/share/matchup/{share['id']}/card.png?{'&'.join(query_parts)}&v={share['cache_key']}"
         html_text = (STATIC_ROOT / "index.html").read_text(encoding="utf-8")
         replacements = {
             "title": f"{share['title']} | Chalked",

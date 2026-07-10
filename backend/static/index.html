@@ -1709,8 +1709,12 @@ function updateChatButton(el, m){
 }
 function matchupShareUrl(m){
   const l = L();
-  const qs = l?.id ? `?league=${encodeURIComponent(l.id)}` : '';
-  return `${location.origin}/share/matchup/${encodeURIComponent(m.id)}${qs}`;
+  const params = new URLSearchParams();
+  if(l?.id) params.set('league', l.id);
+  const my = l?.picks?.find(p=>p.matchupId===m.id);
+  if(my?.id) params.set('pick', my.id);
+  const qs = params.toString();
+  return `${location.origin}/share/matchup/${encodeURIComponent(m.id)}${qs ? `?${qs}` : ''}`;
 }
 async function shareMatchup(id){
   const l = L();
@@ -1721,7 +1725,9 @@ async function shareMatchup(id){
   const title = `${A.name} vs ${B.name} - ${m.statCategory || m.unit}`;
   try{
     if(navigator.share){
-      await navigator.share({title, text:'Fade the crowd on this Chalked matchup.', url});
+      const my = l?.picks?.find(p=>p.matchupId===m.id);
+      const text = my ? `I backed ${sideName(m, my.side)} on Chalked.` : 'Fade the crowd on this Chalked matchup.';
+      await navigator.share({title, text, url});
       return;
     }
   }catch(e){}

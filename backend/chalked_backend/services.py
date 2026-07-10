@@ -1883,11 +1883,11 @@ def matchup_dict(conn: sqlite3.Connection, m: sqlite3.Row) -> dict:
     }
 
 
-def public_matchup_share(conn: sqlite3.Connection, matchup_id: str) -> dict:
+def public_matchup_share(conn: sqlite3.Connection, matchup_id: str, pick_id: str | None = None) -> dict:
     row = conn.execute(
         """
         SELECT m.*, s.week, s.game_date, s.status slate_status,
-               l.id league_id, l.name league_name,
+               l.id league_id, l.name league_name, l.min_mult, l.max_mult,
                pa.name player_a_name, pa.team player_a_team, pa.position player_a_position,
                pb.name player_b_name, pb.team player_b_team, pb.position player_b_position
         FROM matchups m
@@ -1923,6 +1923,42 @@ def public_matchup_share(conn: sqlite3.Connection, matchup_id: str) -> dict:
     ]
     description = " - ".join(part for part in parts if part)
     description = f"{description}. Pick the player, call the tie, or fade the crowd."
+    pick = None
+    if pick_id:
+        pick_row = conn.execute(
+            """
+            SELECT p.*, u.handle, u.display_name
+            FROM picks p
+            JOIN users u ON u.id = p.user_id
+            WHERE p.id = ? AND p.matchup_id = ?
+            """,
+            (pick_id, row["id"]),
+        ).fetchone()
+        if pick_row:
+            pick = row_to_dict(pick_row)
+            picked_side = pick["side"]
+            pick["side_label"] = share_side_name(row, picked_side)
+            pick["won"] = bool(row["winner_side"] and picked_side == row["winner_side"])
+            if pick["status"] == "settled":
+                if pick["won"]:
+                    pick["result_label"] = f"won {int(pick['payout'] or 0):,} pts"
+                else:
+                    pick["result_label"] = f"lost {int(pick['stake'] or 0):,} pts"
+            else:
+                pick["result_label"] = f"{int(pick['stake'] or 0):,} pts @ {float(pick['mult_at_lock'] or 0):.2f}x"
+    market = {
+        "a": int(row["pub_a"] or 0),
+        "b": int(row["pub_b"] or 0),
+        "tie": int(row["pub_tie"] or 0),
+        "total": market_total,
+    }
+    mults = {
+        "a": share_multiplier(row["min_mult"], row["max_mult"], market["a"], market_total),
+        "b": share_multiplier(row["min_mult"], row["max_mult"], market["b"], market_total),
+        "tie": share_multiplier(row["min_mult"], row["max_mult"], market["tie"], market_total),
+    }
+    cache_source = row["settled_at"] or row["stat_synced_at"] or row["game_start"] or row["id"]
+    cache_key = re.sub(r"[^A-Za-z0-9]+", "", str(cache_source))[-24:] or row["id"]
     return {
         "id": row["id"],
         "league_id": row["league_id"],
@@ -1933,11 +1969,37 @@ def public_matchup_share(conn: sqlite3.Connection, matchup_id: str) -> dict:
         "stat_label": stat_label,
         "unit": row["unit"],
         "game_start": game_start,
+        "game_status": row["game_status"] or "Scheduled",
+        "live_state": row["live_state"] or "Preview",
+        "inning": row["inning"],
+        "status": row["status"],
+        "winner_side": row["winner_side"],
+        "actual_a": row["actual_a"],
+        "actual_b": row["actual_b"],
+        "live_stats": {"a": row["stat_current_a"] or 0, "b": row["stat_current_b"] or 0},
+        "market": market,
+        "multipliers": mults,
+        "pick": pick,
+        "cache_key": cache_key,
         "players": {
             "a": {"name": row["player_a_name"], "team": row["player_a_team"], "position": row["player_a_position"], "opponent": row["opponent_a"]},
             "b": {"name": row["player_b_name"], "team": row["player_b_team"], "position": row["player_b_position"], "opponent": row["opponent_b"]},
         },
     }
+
+
+def share_multiplier(min_mult: float, max_mult: float, points: int, total: int) -> float:
+    if total <= 0 or points <= 0:
+        return float(max_mult)
+    return round(max(float(min_mult), min(float(max_mult), 1 / (points / total))), 2)
+
+
+def share_side_name(row: sqlite3.Row, side: str) -> str:
+    if side == "a":
+        return row["player_a_name"]
+    if side == "b":
+        return row["player_b_name"]
+    return "the tie"
 
 
 def parse_last5(raw: str | None) -> list[float]:

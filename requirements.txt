@@ -1,3 +1,1 @@
-# Chalked currently uses only the Python standard library.
-# Keep this file so Render/Railway/Fly build steps can run:
-#   pip install -r requirements.txt
+Pillow>=10.0

@@ -1,14 +1,17 @@
 import os
 import tempfile
 import unittest
+from io import BytesIO
 from pathlib import Path
 
 from backend.chalked_backend import services
+from backend.chalked_backend.share_cards import render_matchup_card_png
 from backend.chalked_backend.server import cookie_header
 from backend.chalked_backend.storage import upload_image
 from backend.chalked_backend.storage import upload_storage_status
 from backend.chalked_backend.db import init_db, transaction
 from backend.chalked_backend.providers import GameInfo, Player
+from PIL import Image
 from backend.chalked_backend.services import (
     ApiError,
     activity_feed,
@@ -190,14 +193,19 @@ class ServiceTests(unittest.TestCase):
             league = create_league(conn, user["id"], {"name": "Share League", "code": "SHARE1"})
             slate = ensure_active_slate(conn, league["id"])
             matchup_id = slate["matchups"][0]["id"]
+            pick = create_pick(conn, user["id"], league["id"], {"matchup_id": matchup_id, "side": "a", "stake": 50})
 
-            share = public_matchup_share(conn, matchup_id)
+            share = public_matchup_share(conn, matchup_id, pick["id"])
+            png = render_matchup_card_png(share, Path("backend/static"))
+            image = Image.open(BytesIO(png))
 
             self.assertEqual(share["id"], matchup_id)
             self.assertEqual(share["league_name"], "Share League")
             self.assertIn(" vs ", share["title"])
             self.assertIn("Pick the player", share["description"])
             self.assertEqual(set(share["players"].keys()), {"a", "b"})
+            self.assertEqual(share["pick"]["id"], pick["id"])
+            self.assertEqual(image.size, (1200, 630))
 
     def test_next_slate_advances_after_settled_week(self):
         with transaction(self.db_path) as conn:
