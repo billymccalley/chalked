@@ -306,8 +306,8 @@ a{color:var(--blue)}
 .pside{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:10px 6px;border-radius:var(--rad-s);
   border:1.5px solid transparent;transition:border-color .15s, background .15s;cursor:pointer}
 .pside:hover{background:rgba(255,255,255,.025)}
-.pside.selA{border-color:var(--red);background:var(--red-dim)}
-.pside.selB{border-color:var(--blue);background:var(--blue-dim)}
+.pside.selA{border-color:var(--side-a,var(--red));background:var(--side-a-soft,var(--red-dim))}
+.pside.selB{border-color:var(--side-b,var(--blue));background:var(--side-b-soft,var(--blue-dim))}
 .pside.selT,.tie-pick.selT{border-color:var(--gold);background:rgba(255,197,61,.09)}
 .avatar{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;
   font-family:var(--disp);font-weight:800;font-size:19px;letter-spacing:.02em;color:#fff;position:relative}
@@ -333,8 +333,8 @@ a{color:var(--blue)}
 
 /* signature: the tug bar */
 .tug{margin:12px 2px 4px;height:12px;box-shadow:inset 0 1px 3px rgba(0,0,0,.4);border-radius:99px;display:flex;overflow:hidden;background:#1B2430;position:relative}
-.tug .tA{background:linear-gradient(90deg,#D8402F,var(--red));transition:width .5s cubic-bezier(.5,0,.2,1)}
-.tug .tB{background:linear-gradient(90deg,var(--blue),#1FA468);flex:1;transition:width .5s cubic-bezier(.5,0,.2,1)}
+.tug .tA{background:linear-gradient(90deg,var(--side-a-soft,rgba(216,64,47,.5)),var(--side-a,var(--red)));transition:width .5s cubic-bezier(.5,0,.2,1)}
+.tug .tB{background:linear-gradient(90deg,var(--side-b,var(--blue)),var(--side-b-soft,rgba(31,164,104,.5)));flex:1;transition:width .5s cubic-bezier(.5,0,.2,1)}
 .tug-labels{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;font-family:var(--mono);font-size:11px;color:var(--muted);margin:4px 4px 0}
 .tug-labels span:nth-child(2){color:var(--gold)}
 .tug-labels span:last-child{text-align:right}
@@ -390,7 +390,8 @@ a{color:var(--blue)}
 .match-card.lost::before{background:var(--loss);box-shadow:0 0 18px rgba(255,107,107,.45)}
 .match-card.resolved .pside{cursor:default}
 .match-card.resolved .pside:not(.winner-side){opacity:.5;filter:saturate(.75)}
-.match-card.resolved .pside.winner-side{border-color:rgba(46,217,138,.8);background:rgba(46,217,138,.08);box-shadow:inset 0 0 0 1px rgba(46,217,138,.18)}
+.match-card.resolved .pside.side-a.winner-side{border-color:var(--side-a,var(--green));background:var(--side-a-soft,rgba(46,217,138,.08));box-shadow:inset 0 0 0 1px var(--side-a-line,rgba(46,217,138,.18))}
+.match-card.resolved .pside.side-b.winner-side{border-color:var(--side-b,var(--green));background:var(--side-b-soft,rgba(46,217,138,.08));box-shadow:inset 0 0 0 1px var(--side-b-line,rgba(46,217,138,.18))}
 .match-card.resolved .pside.my-pick:not(.winner-side){opacity:1;border-color:rgba(255,107,107,.72);background:rgba(255,107,107,.08);box-shadow:inset 0 0 0 1px rgba(255,107,107,.14)}
 .match-card.resolved .tie-pick.winner-side{border-color:rgba(46,217,138,.8);background:rgba(46,217,138,.08);box-shadow:inset 0 0 0 1px rgba(46,217,138,.18)}
 .match-card.resolved .tie-pick.my-pick:not(.winner-side){border-color:rgba(255,107,107,.72);background:rgba(255,107,107,.08)}
@@ -399,7 +400,8 @@ a{color:var(--blue)}
 .result-strip .net{font-family:var(--mono);font-weight:700}
 .net.pos{color:var(--green)} .net.neg{color:var(--loss)} .net.zero{color:var(--faint)}
 .winner-tag{font-family:var(--disp);text-transform:uppercase;font-weight:800;font-size:13px;letter-spacing:.06em;padding:2px 8px;border-radius:6px}
-.winner-tag.A{color:var(--red);background:var(--red-dim)} .winner-tag.B{color:var(--blue);background:var(--blue-dim)}
+.winner-tag.A{color:var(--side-a,var(--red));background:var(--side-a-soft,var(--red-dim));border:1px solid var(--side-a-line,transparent)}
+.winner-tag.B{color:var(--side-b,var(--blue));background:var(--side-b-soft,var(--blue-dim));border:1px solid var(--side-b-line,transparent)}
 .winner-tag.T{color:var(--gold);background:rgba(255,197,61,.1)}
 .result-pill{font-family:var(--disp);font-weight:900;letter-spacing:.08em;font-size:12px;padding:5px 9px;border-radius:99px;border:1px solid var(--line);white-space:nowrap}
 .result-pill.win{color:var(--green);border-color:rgba(46,217,138,.42);background:rgba(46,217,138,.09)}
@@ -830,9 +832,14 @@ const pick = a => a[Math.floor(Math.random()*a.length)];
 const clamp = (v,lo,hi) => Math.min(hi, Math.max(lo, v));
 
 /* ---------- real MLB players (avgs are per-week mock projections) ---------- */
-const TEAMCOL = {PIT:'#FDB827',DET:'#FA4616',PHI:'#E81828',BOS:'#BD3039',SEA:'#005C5C',ATL:'#CE1141',
-  NYY:'#1C2841',LAD:'#005A9C',NYM:'#FF5910',KC:'#004687',BAL:'#DF4601',CHC:'#0E3386',CIN:'#C6011F',
-  HOU:'#EB6E1F',AZ:'#A71930',TOR:'#134A8E',MIL:'#12284B',SD:'#2F241D',CLE:'#E31937',SF:'#FD5A1E'};
+const TEAMCOL = {
+  ARI:'#A71930', AZ:'#A71930', ATL:'#CE1141', BAL:'#DF4601', BOS:'#BD3039', CHC:'#0E3386',
+  CWS:'#27251F', CHW:'#27251F', CIN:'#C6011F', CLE:'#E31937', COL:'#33006F', DET:'#FA4616',
+  HOU:'#EB6E1F', KC:'#004687', LAA:'#BA0021', LAD:'#005A9C', MIA:'#00A3E0', MIL:'#12284B',
+  MIN:'#002B5C', NYM:'#FF5910', NYY:'#1C2841', OAK:'#003831', ATH:'#003831', PHI:'#E81828',
+  PIT:'#FDB827', SD:'#2F241D', SEA:'#005C5C', SF:'#FD5A1E', STL:'#C41E3A', TB:'#092C5C',
+  TEX:'#003278', TOR:'#134A8E', WSH:'#AB0003'
+};
 const PLAYERS = {
   skenes:{name:'Paul Skenes',team:'PIT',pos:'SP',grp:'K',mlb:694973}, skubal:{name:'Tarik Skubal',team:'DET',pos:'SP',grp:'K',mlb:669373},
   wheeler:{name:'Zack Wheeler',team:'PHI',pos:'SP',grp:'K',mlb:554430}, crochet:{name:'Garrett Crochet',team:'BOS',pos:'SP',grp:'K',mlb:676979},
@@ -1560,11 +1567,25 @@ function sideName(m, side){
   return PLAYERS[m[side]]?.name || side;
 }
 function sideColor(side){
-  return side === 'a' ? 'var(--red)' : side === 'b' ? 'var(--blue)' : 'var(--gold)';
+  return side === 'a' ? 'var(--side-a,var(--red))' : side === 'b' ? 'var(--side-b,var(--blue))' : 'var(--gold)';
 }
 function signedClass(value){
   const n = Number(value || 0);
   return n > 0 ? 'pos' : n < 0 ? 'neg' : 'zero';
+}
+function teamColor(team, fallback='#FFC53D'){
+  return TEAMCOL[String(team || '').toUpperCase()] || fallback;
+}
+function hexToRgb(hex){
+  const clean = String(hex || '').replace('#','');
+  const full = clean.length === 3 ? clean.split('').map(x=>x+x).join('') : clean;
+  const n = parseInt(full, 16);
+  if(Number.isNaN(n)) return [255,197,61];
+  return [(n>>16)&255, (n>>8)&255, n&255];
+}
+function alphaColor(hex, alpha){
+  const [r,g,b] = hexToRgb(hex);
+  return `rgba(${r},${g},${b},${alpha})`;
 }
 function opponentText(m, side){
   const opp = m.playerInfo?.[side]?.opponent;
@@ -1627,6 +1648,14 @@ function card(m){
   const el = document.createElement('div');
   el.className = 'match-card' + (m.game?.is_live?' live':'') + (my?' committed':'') + (m.resolved ? ` resolved ${my ? (my.side===m.winner?'won':'lost') : 'no-pick'}` : '');
   el.dataset.mid = m.id;
+  const colorA = teamColor(A.team, '#FF5A48');
+  const colorB = teamColor(B.team, '#2ED98A');
+  el.style.setProperty('--side-a', colorA);
+  el.style.setProperty('--side-b', colorB);
+  el.style.setProperty('--side-a-soft', alphaColor(colorA, .16));
+  el.style.setProperty('--side-b-soft', alphaColor(colorB, .16));
+  el.style.setProperty('--side-a-line', alphaColor(colorA, .38));
+  el.style.setProperty('--side-b-line', alphaColor(colorB, .38));
 
   const pctA = T? Math.round(100*sA/T) : 50;
   const pctT = T? Math.round(100*sT/T) : 0;
@@ -1645,9 +1674,9 @@ function card(m){
     </div>
     <div class="game-line">${m.game?.is_live?'<span class="live-dot"></span>':''}<span>${gameStatusText(m)}</span><span class="chip" data-lock-count="${m.id}">${lockCountdownText(m)}</span></div>
     <div class="mc-players">
-      <div class="pside ${my&&my.side==='a'?'selA':''} ${sideState('a')}" onclick="selSide('${m.id}','a')">
+      <div class="pside side-a ${my&&my.side==='a'?'selA':''} ${sideState('a')}" onclick="selSide('${m.id}','a')">
         ${avatarHTML(m.a,'a')}
-        <div class="pname" style="color:var(--red)">${A.name}</div>
+        <div class="pname" style="color:var(--side-a,var(--red))">${A.name}</div>
         <div class="pteam">${A.team} - ${A.pos}${opponentText(m,'a')}</div>
         ${eligibilityTag(m,'a')}
         <div class="p-live-line">${playerLiveLine(m,'a')}</div>
@@ -1660,9 +1689,9 @@ function card(m){
           <small data-ms="tie">${mT.toFixed(2)}x</small>
         </div>
       </div>
-      <div class="pside ${my&&my.side==='b'?'selB':''} ${sideState('b')}" onclick="selSide('${m.id}','b')">
+      <div class="pside side-b ${my&&my.side==='b'?'selB':''} ${sideState('b')}" onclick="selSide('${m.id}','b')">
         ${avatarHTML(m.b,'b')}
-        <div class="pname" style="color:var(--blue)">${B.name}</div>
+        <div class="pname" style="color:var(--side-b,var(--blue))">${B.name}</div>
         <div class="pteam">${B.team} - ${B.pos}${opponentText(m,'b')}</div>
         ${eligibilityTag(m,'b')}
         <div class="p-live-line">${playerLiveLine(m,'b')}</div>
