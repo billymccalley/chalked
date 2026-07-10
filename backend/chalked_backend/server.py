@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import html
 import hmac
 import json
 import logging
@@ -44,6 +45,7 @@ from .services import (
     playoff_picture,
     profile,
     public_user,
+    public_matchup_share,
     refresh_active_slate,
     recent_slates,
     remove_pick,
@@ -120,6 +122,9 @@ class RequestHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         self.request_id = self.headers.get("x-request-id") or new_id("req")
         try:
+            if method == "GET" and parsed.path.startswith("/share/matchup/"):
+                self.write_matchup_share(parsed.path)
+                return
             if method == "GET" and not parsed.path.startswith("/api/"):
                 self.write_static(parsed.path)
                 return
@@ -165,6 +170,35 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_common_headers()
         self.send_header("Content-Type", mimetypes.guess_type(str(target))[0] or "application/octet-stream")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def write_matchup_share(self, path: str) -> None:
+        match = re.fullmatch(r"/share/matchup/(?P<matchup_id>[^/]+)", path)
+        if not match:
+            raise ApiError(404, "Share link not found")
+        with transaction() as conn:
+            ensure_seeded(conn)
+            share = public_matchup_share(conn, match.group("matchup_id"))
+        public = os.environ.get("CHALKED_PUBLIC_URL", "").strip().rstrip("/")
+        if not public:
+            proto = "https" if self.is_https() else "http"
+            public = f"{proto}://{self.headers.get('host', '127.0.0.1:8080')}".rstrip("/")
+        canonical = f"{public}{path}?league={share['league_id']}"
+        image = f"{public}/assets/chalked-preview-v2.png"
+        html_text = (STATIC_ROOT / "index.html").read_text(encoding="utf-8")
+        replacements = {
+            "title": f"{share['title']} | Chalked",
+            "description": share["description"],
+            "url": canonical,
+            "image": image,
+        }
+        html_text = inject_share_meta(html_text, replacements)
+        body = html_text.encode("utf-8")
+        self.send_response(200)
+        self.send_common_headers()
+        self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
@@ -243,6 +277,34 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.send_header("X-Request-ID", self.request_id)
         self.end_headers()
         self.wfile.write(body)
+
+
+def meta_escape(value: str) -> str:
+    return html.escape(str(value), quote=True)
+
+
+def inject_share_meta(html_text: str, meta: dict[str, str]) -> str:
+    title = meta_escape(meta["title"])
+    description = meta_escape(meta["description"])
+    url = meta_escape(meta["url"])
+    image = meta_escape(meta["image"])
+    replacements = [
+        (r"<title>.*?</title>", f"<title>{title}</title>"),
+        (r'<meta name="description" content="[^"]*">', f'<meta name="description" content="{description}">'),
+        (r'<link rel="canonical" href="[^"]*">', f'<link rel="canonical" href="{url}">'),
+        (r'<meta property="og:title" content="[^"]*">', f'<meta property="og:title" content="{title}">'),
+        (r'<meta property="og:description" content="[^"]*">', f'<meta property="og:description" content="{description}">'),
+        (r'<meta property="og:url" content="[^"]*">', f'<meta property="og:url" content="{url}">'),
+        (r'<meta property="og:image" content="[^"]*">', f'<meta property="og:image" content="{image}">'),
+        (r'<meta property="og:image:secure_url" content="[^"]*">', f'<meta property="og:image:secure_url" content="{image}">'),
+        (r'<meta property="og:image:alt" content="[^"]*">', f'<meta property="og:image:alt" content="{title}">'),
+        (r'<meta name="twitter:title" content="[^"]*">', f'<meta name="twitter:title" content="{title}">'),
+        (r'<meta name="twitter:description" content="[^"]*">', f'<meta name="twitter:description" content="{description}">'),
+        (r'<meta name="twitter:image" content="[^"]*">', f'<meta name="twitter:image" content="{image}">'),
+    ]
+    for pattern, replacement in replacements:
+        html_text = re.sub(pattern, replacement, html_text, count=1, flags=re.DOTALL)
+    return html_text
 
 
 def rate_limit_rule(method: str, path: str) -> dict | None:

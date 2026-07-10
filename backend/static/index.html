@@ -317,6 +317,7 @@ a{color:var(--blue)}
 .match-card:hover{transform:translateY(-2px);border-color:#31435C;box-shadow:0 12px 32px rgba(0,0,0,.35)}
 .match-card.committed{border-color:rgba(255,197,61,.4);box-shadow:0 0 0 1px rgba(255,197,61,.18), 0 6px 24px rgba(255,180,40,.07)}
 .match-card.live{border-color:rgba(46,217,138,.55);box-shadow:0 0 0 1px rgba(46,217,138,.18),0 14px 34px rgba(46,217,138,.07)}
+.match-card.shared-focus{border-color:rgba(255,197,61,.78);box-shadow:0 0 0 2px rgba(255,197,61,.22),0 0 32px rgba(255,197,61,.14)}
 .game-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:-4px 0 10px;font-family:var(--mono);font-size:11.5px;color:var(--muted)}
 .game-line .live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 12px rgba(46,217,138,.8)}
 .live-stat{font-family:var(--mono);font-size:11.5px;color:var(--gold)}
@@ -326,6 +327,7 @@ a{color:var(--blue)}
 .stat-chip b{color:var(--text)}
 .detail-btn{font-size:12px;color:var(--faint);text-decoration:underline dotted}
 .detail-btn:hover{color:var(--text)}
+.share-btn.copied{color:var(--gold)}
 
 .mc-players{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}
 .pside{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:10px 6px;border-radius:var(--rad-s);
@@ -1705,6 +1707,38 @@ function updateChatButton(el, m){
   btn.textContent = count ? `Chat ${count}${unread ? ' new' : ''}` : 'Chat';
   btn.title = unread ? `${unread} unread message${unread===1?'':'s'}` : count ? `${count} chat message${count===1?'':'s'}` : 'Open matchup chat';
 }
+function matchupShareUrl(m){
+  const l = L();
+  const qs = l?.id ? `?league=${encodeURIComponent(l.id)}` : '';
+  return `${location.origin}/share/matchup/${encodeURIComponent(m.id)}${qs}`;
+}
+async function shareMatchup(id){
+  const l = L();
+  const m = l?.matchups?.find(x=>x.id===id);
+  if(!m) return toast('Matchup not found');
+  const A = PLAYERS[m.a], B = PLAYERS[m.b];
+  const url = matchupShareUrl(m);
+  const title = `${A.name} vs ${B.name} - ${m.statCategory || m.unit}`;
+  try{
+    if(navigator.share){
+      await navigator.share({title, text:'Fade the crowd on this Chalked matchup.', url});
+      return;
+    }
+  }catch(e){}
+  if(navigator.clipboard?.writeText){
+    try{
+      await navigator.clipboard.writeText(url);
+      document.querySelectorAll(`[data-share-id="${id}"]`).forEach(btn=>{
+        btn.classList.add('copied');
+        btn.textContent = 'copied';
+        setTimeout(()=>{ btn.classList.remove('copied'); btn.textContent = 'share'; }, 1600);
+      });
+      toast('Matchup link copied');
+      return;
+    }catch(e){}
+  }
+  toast(url);
+}
 
 function card(m){
   const A = PLAYERS[m.a], B = PLAYERS[m.b];
@@ -1736,6 +1770,7 @@ function card(m){
     <div class="mc-top">
       <span class="stat-chip"><span class="emoji">&#9918;</span> ${(m.statCategory || '').replace('This Week','Game')}</span>
       <span style="display:flex;gap:12px">
+        <button class="detail-btn share-btn" data-share-id="${m.id}" onclick="shareMatchup('${m.id}')">share</button>
         <button class="detail-btn" onclick="toggleDetail('${m.id}')">details</button>
         ${chatButtonHTML(m)}
       </span>
@@ -2425,6 +2460,10 @@ function resetDemo(){ DB.wipe(); CHAT_STORE = {}; saveChatStore(); seed(); refre
 <script>
 /* ---------- Backend adapter: real accounts, leagues, slates, picks ---------- */
 const API_MODE = location.protocol.startsWith('http');
+const SHARED_MATCHUP_ID = (() => {
+  const match = location.pathname.match(/^\/share\/matchup\/([^/]+)/);
+  return match ? decodeURIComponent(match[1]) : '';
+})();
 let apiUser = null;
 let apiAuthBusy = false;
 let apiUiLoopsStarted = false;
@@ -2749,6 +2788,22 @@ function applySlateView(l, slate){
   l.matchups.forEach(m => hydrateMatchupChat(l.id, l.selectedSlateId || l.week, m));
 }
 
+function focusSharedMatchup(){
+  if(!SHARED_MATCHUP_ID) return false;
+  const l = L();
+  const m = l?.matchups?.find(x=>x.id===SHARED_MATCHUP_ID);
+  if(!m) return false;
+  go('slate');
+  setTimeout(()=>{
+    const target = Array.from(document.querySelectorAll('[data-mid]')).find(el=>el.dataset.mid === SHARED_MATCHUP_ID);
+    if(!target) return;
+    target.scrollIntoView({behavior:'smooth', block:'center'});
+    target.classList.add('shared-focus');
+    setTimeout(()=>target.classList.remove('shared-focus'), 3200);
+  }, 120);
+  return true;
+}
+
 function applyBoard(l, board){
   l.boardRows = board.rows || [];
   const mine = l.boardRows.find(r=>r.user_id === apiUser.id);
@@ -2774,7 +2829,8 @@ async function apiLoad(){
     openLeagues:(leagues.open || []).map(mapLeague),
     joinedOpen:{}, onboarded:true
   };
-  const inviteCode = new URLSearchParams(location.search).get('join');
+  const params = new URLSearchParams(location.search);
+  const inviteCode = params.get('join');
   if(inviteCode && !S.leagues.some(l=>l.code===inviteCode.toUpperCase())){
     try{
       await apiFetch(`/api/leagues/${inviteCode}/join`, {method:'POST', body:JSON.stringify({code:inviteCode})});
@@ -2782,6 +2838,8 @@ async function apiLoad(){
       return apiLoad();
     }catch(e){ toast(e.message); }
   }
+  const sharedLeagueId = params.get('league');
+  if(sharedLeagueId && S.leagues.some(l=>l.id===sharedLeagueId)) S.activeLeagueId = sharedLeagueId;
   if(!S.activeLeagueId || !S.leagues.some(l=>l.id===S.activeLeagueId)) S.activeLeagueId = S.leagues[0]?.id;
   if(S.activeLeagueId) await apiLoadLeague(S.activeLeagueId, true);
   cleanupChatStore();
@@ -2850,7 +2908,7 @@ function apiEnterApp(){
   $('#adminTab')?.classList.toggle('hide', !apiUser?.is_admin);
   $('#onboard').classList.add('hide');
   window.scrollTo(0,0);
-  go('leagues');
+  if(!focusSharedMatchup()) go('leagues');
   startApiUiLoops();
   try{
     if(apiUser?.id && !localStorage.getItem(onboardingKey())){

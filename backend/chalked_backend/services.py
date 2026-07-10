@@ -1883,6 +1883,63 @@ def matchup_dict(conn: sqlite3.Connection, m: sqlite3.Row) -> dict:
     }
 
 
+def public_matchup_share(conn: sqlite3.Connection, matchup_id: str) -> dict:
+    row = conn.execute(
+        """
+        SELECT m.*, s.week, s.game_date, s.status slate_status,
+               l.id league_id, l.name league_name,
+               pa.name player_a_name, pa.team player_a_team, pa.position player_a_position,
+               pb.name player_b_name, pb.team player_b_team, pb.position player_b_position
+        FROM matchups m
+        JOIN slates s ON s.id = m.slate_id
+        JOIN leagues l ON l.id = s.league_id
+        JOIN players pa ON pa.id = m.player_a_id
+        JOIN players pb ON pb.id = m.player_b_id
+        WHERE m.id = ?
+        """,
+        (matchup_id,),
+    ).fetchone()
+    if not row:
+        raise ApiError(404, "Matchup not found")
+
+    stat_label = STAT_RULES.get(row["stat_key"], {}).get("label", row["stat_label"]).replace("This Week", "Game")
+    week = int(row["week"] or 1)
+    day = ((week - 1) % 7) + 1
+    game_start = row["game_start"] or row["game_start_a"] or row["game_start_b"]
+    start_label = ""
+    if game_start:
+        try:
+            start_label = parse_utc(game_start).strftime("%b %d, %I:%M %p UTC").replace(" 0", " ")
+        except ValueError:
+            start_label = str(game_start)
+    market_total = int(row["pub_a"] or 0) + int(row["pub_b"] or 0) + int(row["pub_tie"] or 0)
+    title = f"{row['player_a_name']} vs {row['player_b_name']} - {stat_label}"
+    context = f"Week {((week - 1) // 7) + 1}, Day {day}"
+    parts = [
+        f"{row['league_name']} matchup",
+        context,
+        start_label,
+        f"{market_total:,} crowd pts" if market_total else "",
+    ]
+    description = " - ".join(part for part in parts if part)
+    description = f"{description}. Pick the player, call the tie, or fade the crowd."
+    return {
+        "id": row["id"],
+        "league_id": row["league_id"],
+        "league_name": row["league_name"],
+        "slate_id": row["slate_id"],
+        "title": title,
+        "description": description,
+        "stat_label": stat_label,
+        "unit": row["unit"],
+        "game_start": game_start,
+        "players": {
+            "a": {"name": row["player_a_name"], "team": row["player_a_team"], "position": row["player_a_position"], "opponent": row["opponent_a"]},
+            "b": {"name": row["player_b_name"], "team": row["player_b_team"], "position": row["player_b_position"], "opponent": row["opponent_b"]},
+        },
+    }
+
+
 def parse_last5(raw: str | None) -> list[float]:
     if not raw:
         return []

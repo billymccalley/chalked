@@ -30,6 +30,7 @@ from backend.chalked_backend.services import (
     login,
     matchup_chat,
     player_stat_value,
+    public_matchup_share,
     request_email_verification,
     request_password_reset,
     record_system_status,
@@ -181,6 +182,22 @@ class ServiceTests(unittest.TestCase):
             pick = create_pick(conn, user["id"], league["id"], {"matchup_id": matchup_id, "side": "a", "stake": 50})
             self.assertEqual(pick["stake"], 50)
             self.assertGreaterEqual(pick["mult_at_lock"], league["settings"]["min_mult"])
+
+    def test_public_matchup_share_payload_uses_real_matchup_context(self):
+        with transaction(self.db_path) as conn:
+            ensure_seeded(conn)
+            user = create_user(conn, {"handle": "sharefan", "password": "secret123"})
+            league = create_league(conn, user["id"], {"name": "Share League", "code": "SHARE1"})
+            slate = ensure_active_slate(conn, league["id"])
+            matchup_id = slate["matchups"][0]["id"]
+
+            share = public_matchup_share(conn, matchup_id)
+
+            self.assertEqual(share["id"], matchup_id)
+            self.assertEqual(share["league_name"], "Share League")
+            self.assertIn(" vs ", share["title"])
+            self.assertIn("Pick the player", share["description"])
+            self.assertEqual(set(share["players"].keys()), {"a", "b"})
 
     def test_next_slate_advances_after_settled_week(self):
         with transaction(self.db_path) as conn:
