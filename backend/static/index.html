@@ -306,8 +306,8 @@ a{color:var(--blue)}
 .pside{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:10px 6px;border-radius:var(--rad-s);
   border:1.5px solid transparent;transition:border-color .15s, background .15s;cursor:pointer}
 .pside:hover{background:rgba(255,255,255,.025)}
-.pside.selA{border-color:var(--side-a,var(--red));background:var(--side-a-soft,var(--red-dim))}
-.pside.selB{border-color:var(--side-b,var(--blue));background:var(--side-b-soft,var(--blue-dim))}
+.pside.selA{border-color:var(--side-a,var(--red));background:var(--side-a-faint,rgba(255,255,255,.035))}
+.pside.selB{border-color:var(--side-b,var(--blue));background:var(--side-b-faint,rgba(255,255,255,.035))}
 .pside.selT,.tie-pick.selT{border-color:var(--gold);background:rgba(255,197,61,.09)}
 .avatar{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;
   font-family:var(--disp);font-weight:800;font-size:19px;letter-spacing:.02em;color:#fff;position:relative}
@@ -384,24 +384,22 @@ a{color:var(--blue)}
 .chat-in input:focus{outline:1px solid var(--gold)}
 
 .match-card.resolved{border-color:rgba(139,159,184,.24)}
-.match-card.won{border-color:rgba(46,217,138,.82);box-shadow:0 0 0 1px rgba(46,217,138,.2),0 0 34px rgba(46,217,138,.14)}
-.match-card.lost{border-color:rgba(255,107,107,.82);box-shadow:0 0 0 1px rgba(255,107,107,.2),0 0 34px rgba(255,107,107,.12)}
-.match-card.won::before,.match-card.lost::before{content:"";position:absolute;inset:0 auto 0 0;width:5px;background:var(--green);box-shadow:0 0 18px rgba(46,217,138,.5)}
-.match-card.lost::before{background:var(--loss);box-shadow:0 0 18px rgba(255,107,107,.45)}
+.match-card.won{border-color:rgba(46,217,138,.68);box-shadow:0 0 0 1px rgba(46,217,138,.14),0 12px 28px rgba(0,0,0,.24)}
+.match-card.lost{border-color:rgba(255,107,107,.62);box-shadow:0 0 0 1px rgba(255,107,107,.12),0 12px 28px rgba(0,0,0,.24)}
 .match-card.resolved .pside{cursor:default}
-.match-card.resolved .pside:not(.winner-side){opacity:.5;filter:saturate(.75)}
-.match-card.resolved .pside.side-a.winner-side{border-color:var(--side-a,var(--green));background:var(--side-a-soft,rgba(46,217,138,.08));box-shadow:inset 0 0 0 1px var(--side-a-line,rgba(46,217,138,.18))}
-.match-card.resolved .pside.side-b.winner-side{border-color:var(--side-b,var(--green));background:var(--side-b-soft,rgba(46,217,138,.08));box-shadow:inset 0 0 0 1px var(--side-b-line,rgba(46,217,138,.18))}
-.match-card.resolved .pside.my-pick:not(.winner-side){opacity:1;border-color:rgba(255,107,107,.72);background:rgba(255,107,107,.08);box-shadow:inset 0 0 0 1px rgba(255,107,107,.14)}
-.match-card.resolved .tie-pick.winner-side{border-color:rgba(46,217,138,.8);background:rgba(46,217,138,.08);box-shadow:inset 0 0 0 1px rgba(46,217,138,.18)}
-.match-card.resolved .tie-pick.my-pick:not(.winner-side){border-color:rgba(255,107,107,.72);background:rgba(255,107,107,.08)}
-.result-strip{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px;display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;gap:8px;align-items:center;font-size:13px}
+.match-card.resolved .pside:not(.winner-side){opacity:.72;filter:saturate(.85)}
+.match-card.resolved .pside.side-a.winner-side{border-color:var(--side-a,var(--green));background:var(--side-a-faint,rgba(255,255,255,.035));box-shadow:inset 0 0 0 1px var(--side-a-line,rgba(46,217,138,.18))}
+.match-card.resolved .pside.side-b.winner-side{border-color:var(--side-b,var(--green));background:var(--side-b-faint,rgba(255,255,255,.035));box-shadow:inset 0 0 0 1px var(--side-b-line,rgba(46,217,138,.18))}
+.match-card.resolved .pside.my-pick:not(.winner-side){opacity:1;border-color:rgba(255,107,107,.5);background:rgba(255,107,107,.035)}
+.match-card.resolved .tie-pick.winner-side{border-color:var(--gold);background:rgba(255,197,61,.08)}
+.match-card.resolved .tie-pick.my-pick:not(.winner-side){border-color:rgba(255,107,107,.5);background:rgba(255,107,107,.035)}
+.result-strip{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:13px}
 .result-strip .rs-stat{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
 .result-strip .net{font-family:var(--mono);font-weight:700}
 .net.pos{color:var(--green)} .net.neg{color:var(--loss)} .net.zero{color:var(--faint)}
 .winner-tag{font-family:var(--disp);text-transform:uppercase;font-weight:800;font-size:13px;letter-spacing:.06em;padding:2px 8px;border-radius:6px}
-.winner-tag.A{color:var(--side-a,var(--red));background:var(--side-a-soft,var(--red-dim));border:1px solid var(--side-a-line,transparent)}
-.winner-tag.B{color:var(--side-b,var(--blue));background:var(--side-b-soft,var(--blue-dim));border:1px solid var(--side-b-line,transparent)}
+.winner-tag.A{color:var(--side-a,var(--red));background:rgba(255,255,255,.035);border:1px solid var(--side-a-line,transparent)}
+.winner-tag.B{color:var(--side-b,var(--blue));background:rgba(255,255,255,.035);border:1px solid var(--side-b-line,transparent)}
 .winner-tag.T{color:var(--gold);background:rgba(255,197,61,.1)}
 .result-pill{font-family:var(--disp);font-weight:900;letter-spacing:.08em;font-size:12px;padding:5px 9px;border-radius:99px;border:1px solid var(--line);white-space:nowrap}
 .result-pill.win{color:var(--green);border-color:rgba(46,217,138,.42);background:rgba(46,217,138,.09)}
@@ -841,9 +839,8 @@ const TEAMCOL = {
   TEX:'#003278', TOR:'#134A8E', WSH:'#AB0003'
 };
 const TEAMACCENT = {
-  CWS:'#C4CED4', CHW:'#C4CED4', COL:'#C4CED4', KC:'#BD9B60', MIL:'#FFC52F', MIN:'#D31145',
-  NYY:'#C4CED4', OAK:'#EFB21E', ATH:'#EFB21E', SD:'#FFC425', SEA:'#6BE6E6', TB:'#8FBCE6',
-  TEX:'#C0111F', TOR:'#E8291C'
+  CWS:'#C4CED4', CHW:'#C4CED4', COL:'#C4CED4', MIL:'#FFC52F',
+  NYY:'#C4CED4', OAK:'#EFB21E', ATH:'#EFB21E', SD:'#FFC425', SEA:'#00A3AD', TB:'#8FBCE6'
 };
 const PLAYERS = {
   skenes:{name:'Paul Skenes',team:'PIT',pos:'SP',grp:'K',mlb:694973}, skubal:{name:'Tarik Skubal',team:'DET',pos:'SP',grp:'K',mlb:669373},
@@ -933,10 +930,21 @@ const OPEN_LEAGUES = [
    settings:{bankroll:750,minStake:10,maxStake:250,minMult:1.2,maxMult:4.0,streakStep:8,streakCap:40,marginBonus:0.25,matchups:6,drift:60}},
 ];
 const BADGES = [
-  {id:'contra',ico:'CR',name:'Contrarian King',desc:'Win a pick that paid 3.0x or better'},
-  {id:'hot',ico:'STK',name:'Hot Hand',desc:'Hit a 3-pick win streak'},
-  {id:'sharp',ico:'AIM',name:'Sharpshooter',desc:'60%+ accuracy over 10+ picks'},
-  {id:'roller',ico:'$',name:'High Roller',desc:'Win a single pick staked 400+'},
+  {id:'first_pick',ico:'P1',name:'Ticket Punched',desc:'Lock your first pick'},
+  {id:'first_win',ico:'W1',name:'First Cash',desc:'Win your first matchup'},
+  {id:'positive',ico:'+EV',name:'In The Green',desc:'Carry a positive season net'},
+  {id:'hot',ico:'STK',name:'Hot Hand',desc:'Build a 3-pick active win streak'},
+  {id:'heater',ico:'5X',name:'Heater',desc:'Build a 5-pick active win streak'},
+  {id:'sharp',ico:'60%',name:'Sharpshooter',desc:'60%+ accuracy over 10+ settled picks'},
+  {id:'elite',ico:'65%',name:'Elite Read',desc:'65%+ accuracy over 25+ settled picks'},
+  {id:'contra',ico:'3X',name:'Contrarian',desc:'Win a pick that paid 3.0x or better'},
+  {id:'moonshot',ico:'4X',name:'Moonshot',desc:'Win a pick that paid 4.0x or better'},
+  {id:'roller',ico:'400',name:'High Roller',desc:'Win a single pick staked 400+ points'},
+  {id:'max_stake',ico:'MAX',name:'Full Send',desc:'Lock a pick at the league max stake'},
+  {id:'tie_call',ico:'TIE',name:'Called The Push',desc:'Win a tie pick'},
+  {id:'sweat_ten',ico:'10',name:'Regular',desc:'Lock 10 total picks'},
+  {id:'volume',ico:'25',name:'Card Grinder',desc:'Lock 25 total picks'},
+  {id:'owner',ico:'OWN',name:'Commish',desc:'Own a league'},
 ];
 
 /* ---------- state ---------- */
@@ -1595,7 +1603,7 @@ function colorLuminance(hex){
 function teamColor(team, fallback='#FFC53D'){
   const code = String(team || '').toUpperCase();
   const primary = TEAMCOL[code] || fallback;
-  return colorLuminance(primary) < .095 ? (TEAMACCENT[code] || fallback) : primary;
+  return colorLuminance(primary) < .07 && TEAMACCENT[code] ? TEAMACCENT[code] : primary;
 }
 function alphaColor(hex, alpha){
   const [r,g,b] = hexToRgb(hex);
@@ -1666,10 +1674,12 @@ function card(m){
   const colorB = teamColor(B.team, '#2ED98A');
   el.style.setProperty('--side-a', colorA);
   el.style.setProperty('--side-b', colorB);
-  el.style.setProperty('--side-a-soft', alphaColor(colorA, .16));
-  el.style.setProperty('--side-b-soft', alphaColor(colorB, .16));
-  el.style.setProperty('--side-a-line', alphaColor(colorA, .38));
-  el.style.setProperty('--side-b-line', alphaColor(colorB, .38));
+  el.style.setProperty('--side-a-soft', alphaColor(colorA, .12));
+  el.style.setProperty('--side-b-soft', alphaColor(colorB, .12));
+  el.style.setProperty('--side-a-faint', alphaColor(colorA, .07));
+  el.style.setProperty('--side-b-faint', alphaColor(colorB, .07));
+  el.style.setProperty('--side-a-line', alphaColor(colorA, .32));
+  el.style.setProperty('--side-b-line', alphaColor(colorB, .32));
 
   const pctA = T? Math.round(100*sA/T) : 50;
   const pctT = T? Math.round(100*sT/T) : 0;
@@ -1922,6 +1932,53 @@ function go(v){
   if(v==='admin') renderAdmin();
 }
 
+function leaguePickFacts(l){
+  const byId = new Map();
+  (l?.picks || []).forEach(p=>{
+    const m = (l.matchups || []).find(x=>x.id===p.matchupId);
+    byId.set(p.id || `${l.selectedSlateId || l.week}:${p.matchupId}`, {p, m});
+  });
+  (l?.slates || []).forEach(s=>{
+    (s.picks || []).forEach(p=>{
+      const m = (s.matchups || []).find(x=>x.id===p.matchupId);
+      byId.set(p.id || `${s.id}:${p.matchupId}`, {p, m});
+    });
+  });
+  const all = [...byId.values()];
+  const settled = all.filter(x=>x.m && x.m.resolved);
+  const wins = settled.filter(x=>x.p.side === x.m.winner);
+  return {all, settled, wins};
+}
+function earnedBadges(l){
+  const earned = {...(l?.user?.badges || {})};
+  const {all, settled, wins} = leaguePickFacts(l);
+  const totalSettled = Number(l?.user?.w || 0) + Number(l?.user?.l || 0);
+  const acc = totalSettled ? Number(l.user.w || 0) / totalSettled : 0;
+  if(all.length >= 1) earned.first_pick = true;
+  if((l?.user?.w || 0) >= 1 || wins.length >= 1) earned.first_win = true;
+  if((l?.user?.season || 0) > 0) earned.positive = true;
+  if((l?.user?.streak || 0) >= 3) earned.hot = true;
+  if((l?.user?.streak || 0) >= 5) earned.heater = true;
+  if(totalSettled >= 10 && acc >= .6) earned.sharp = true;
+  if(totalSettled >= 25 && acc >= .65) earned.elite = true;
+  if(wins.some(x=>Number(x.p.multAtLock || 0) >= 3)) earned.contra = true;
+  if(wins.some(x=>Number(x.p.multAtLock || 0) >= 4)) earned.moonshot = true;
+  if(wins.some(x=>Number(x.p.stake || 0) >= 400)) earned.roller = true;
+  if(all.some(x=>Number(x.p.stake || 0) >= Number(l?.settings?.maxStake || Infinity))) earned.max_stake = true;
+  if(wins.some(x=>x.p.side === 'tie')) earned.tie_call = true;
+  if(all.length >= 10) earned.sweat_ten = true;
+  if(all.length >= 25) earned.volume = true;
+  if(l && isOwner(l)) earned.owner = true;
+  return earned;
+}
+function renderBadges(l){
+  if(!l) return `<div class="empty"><b>No league stats yet</b>Join a league and make picks to build your profile.</div>`;
+  const earned = earnedBadges(l);
+  return BADGES.map(b=>`
+    <div class="badge ${earned[b.id]?'':'off'}"><div class="bico">${esc(b.ico)}</div>
+    <div><div class="bname">${esc(b.name)}</div><div class="bdesc">${esc(b.desc)}</div></div></div>`).join('');
+}
+
 /* ---------- My Picks ---------- */
 function renderPicks(){
   const now = $('#picksNow');
@@ -2020,9 +2077,7 @@ function renderProfile(){
   $('#pfRecord').textContent = `${L().user.w}-${L().user.l}`;
   $('#pfAcc').textContent = (L().user.w+L().user.l) ? Math.round(100*L().user.w/(L().user.w+L().user.l))+'%' : '-';
   $('#pfStreak').textContent = 'STK '+L().user.streak;
-  $('#badgeGrid').innerHTML = BADGES.map(b=>`
-    <div class="badge ${L().user.badges[b.id]?'':'off'}"><div class="bico">${b.ico}</div>
-    <div><div class="bname">${b.name}</div><div class="bdesc">${b.desc}</div></div></div>`).join('');
+  $('#badgeGrid').innerHTML = renderBadges(L());
 }
 
 function renderAdmin(){
@@ -3091,7 +3146,7 @@ renderProfile = function(){
       <button class="btn" style="margin-top:8px" onclick="saveLeagueAlias('${lp.league_id}')">Save league profile</button>
     </div>`).join('')}</div>
   </div>`;
-  $('#badgeGrid').innerHTML = `<div class="empty"><b>Backend profile is live</b>Badges are next after real stat settlement.</div>`;
+  $('#badgeGrid').innerHTML = renderBadges(L());
 };
 
 function adminFreshnessLabel(cron, name='job'){
