@@ -61,10 +61,10 @@ CHALKED_CRON_SECRET=generate-a-long-random-secret
 CHALKED_ADMIN_HANDLES=your-admin-username-or-email
 CHALKED_REQUIRE_OBJECT_STORAGE=1
 CHALKED_MAIL_FROM=Chalked <noreply@playchalked.com>
-CHALKED_SMTP_HOST=your-smtp-host
+CHALKED_SMTP_HOST=smtp.postmarkapp.com
 CHALKED_SMTP_PORT=587
-CHALKED_SMTP_USERNAME=your-smtp-user
-CHALKED_SMTP_PASSWORD=your-smtp-password
+CHALKED_SMTP_USERNAME=your-postmark-server-token
+CHALKED_SMTP_PASSWORD=your-postmark-server-token
 CHALKED_SMTP_TLS=1
 CHALKED_UPLOAD_BUCKET=chalked-uploads
 CHALKED_UPLOAD_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
@@ -86,6 +86,30 @@ CHALKED_ACCESS_LOG=1
 ```
 
 Do not set `CHALKED_DISABLE_MLB=1` in production.
+
+## Email setup
+
+Chalked sends email verification and password reset messages through SMTP. Postmark is the simplest recommended provider once `playchalked.com` email/domain verification is ready.
+
+Postmark setup:
+
+1. Add and verify `playchalked.com` in Postmark.
+2. Add the DNS records Postmark gives you in Cloudflare.
+3. Create or open a Postmark Server and copy its Server API Token.
+4. In Render, set:
+
+```text
+CHALKED_MAIL_FROM=Chalked <noreply@playchalked.com>
+CHALKED_SMTP_HOST=smtp.postmarkapp.com
+CHALKED_SMTP_PORT=587
+CHALKED_SMTP_USERNAME=your-postmark-server-token
+CHALKED_SMTP_PASSWORD=your-postmark-server-token
+CHALKED_SMTP_TLS=1
+```
+
+5. Redeploy. In the in-app Admin tab, the Email card should say `ready`.
+
+Until SMTP is configured, local/dev mode records email in the `email_outbox` table and returns dev links in API responses. Production should use real SMTP before inviting many users.
 
 ## Persistent storage
 

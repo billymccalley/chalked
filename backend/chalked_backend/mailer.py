@@ -16,6 +16,18 @@ def smtp_enabled() -> bool:
     return bool(os.environ.get("CHALKED_SMTP_HOST"))
 
 
+def smtp_status() -> dict:
+    return {
+        "enabled": smtp_enabled(),
+        "host": os.environ.get("CHALKED_SMTP_HOST") or None,
+        "port": int(os.environ.get("CHALKED_SMTP_PORT", "587")),
+        "from": os.environ.get("CHALKED_MAIL_FROM", "Chalked <noreply@chalked.local>"),
+        "username_set": bool(os.environ.get("CHALKED_SMTP_USERNAME")),
+        "password_set": bool(os.environ.get("CHALKED_SMTP_PASSWORD")),
+        "tls": os.environ.get("CHALKED_SMTP_TLS", "1") != "0",
+    }
+
+
 def send_email(conn: sqlite3.Connection, recipient: str, subject: str, body: str) -> dict:
     outbox_id = new_id("mail")
     status = "queued"

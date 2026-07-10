@@ -48,6 +48,8 @@ def migrate(conn: sqlite3.Connection) -> None:
             ("display_name", "TEXT"),
             ("avatar_url", "TEXT"),
             ("last_handle_change_at", "TEXT"),
+            ("terms_accepted_at", "TEXT"),
+            ("privacy_accepted_at", "TEXT"),
         ],
         "leagues": [
             ("avatar_url", "TEXT"),

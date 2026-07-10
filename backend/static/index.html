@@ -110,6 +110,9 @@ a{color:var(--blue)}
 .auth-msg{color:var(--muted);font-size:12.5px;margin-left:auto;max-width:310px}
 .auth-foot{margin-top:12px;color:var(--faint);font-size:12px}
 .auth-foot b{color:var(--gold)}
+.legal-check{grid-column:1/-1;display:flex;gap:9px;align-items:flex-start;color:var(--muted);font-size:12.5px;border:1px solid rgba(139,159,184,.14);background:rgba(12,18,26,.62);border-radius:10px;padding:9px 10px}
+.legal-check input{margin-top:2px;accent-color:var(--gold)}
+.legal-check a{color:var(--gold);font-weight:700}
 
 /* ---------- App shell ---------- */
 #app{max-width:1060px;margin:0 auto;padding:0 16px 96px}
@@ -2206,6 +2209,7 @@ function addAuthPanel(){
       <div class="auth-field"><label>Password</label><div class="password-wrap"><input id="authPassword" placeholder="8+ characters" type="password" autocomplete="current-password"><button class="pw-toggle" type="button" onclick="togglePassword('authPassword', this)">Show</button></div></div>
       <div class="auth-field"><label>Email for new account</label><input id="authEmail" placeholder="you@email.com" autocomplete="email"></div>
       <div class="auth-field"><label>Display name</label><input id="authDisplayName" placeholder="How leagues see you" autocomplete="nickname"></div>
+      <label class="legal-check"><input id="authAcceptTerms" type="checkbox"><span>I agree to the <a href="/terms.html" target="_blank" rel="noopener">Terms</a> and <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>. Chalked uses play-money points only.</span></label>
     </div>
     <div class="auth-actions">
       <button class="btn gold" id="authLoginBtn" type="button">Login</button>
@@ -2214,7 +2218,7 @@ function addAuthPanel(){
       <button class="btn ghost hide" id="authConfirmResetBtn" type="button">Set new password</button>
       <span id="authMsg" class="auth-msg">Register with your email, or log into an existing account.</span>
     </div>
-    <div class="auth-foot"><b>Fresh account?</b> Fill username, password, email, and display name, then hit Register.</div>`;
+    <div class="auth-foot"><b>Fresh account?</b> Fill username, password, email, display name, accept the terms, then hit Register.</div>`;
   document.querySelector('.hero').after(panel);
   $('#authLoginBtn').addEventListener('click', apiLogin);
   $('#authRegisterBtn').addEventListener('click', apiRegister);
@@ -2325,10 +2329,13 @@ async function apiRegister(){
     const password = $('#authPassword').value;
     const email = $('#authEmail').value.trim();
     const display_name = $('#authDisplayName').value.trim();
-    const data = await apiFetch('/api/auth/register', {method:'POST', body:JSON.stringify({handle,password,email,display_name})});
+    const accept_terms = $('#authAcceptTerms')?.checked;
+    const data = await apiFetch('/api/auth/register', {method:'POST', body:JSON.stringify({handle,password,email,display_name,accept_terms})});
     apiUser = data.user || data.session_user;
     await apiLoad();
     apiEnterApp();
+    if(data.verification?.dev_link) toast(`Verification link ready: ${data.verification.dev_link}`);
+    else if(data.verification) toast('Account created. Verification email sent.');
   }catch(e){ apiMsg(e.message); }
   finally{ apiAuthBusy = false; }
 }
@@ -2929,6 +2936,8 @@ renderAdmin = async function(){
     const cron = adminFreshnessLabel(s.cron, 'settlement');
     const backup = adminFreshnessLabel(s.backup, 'backup');
     const storageGood = s.storage?.mode === 's3';
+    const mailGood = !!s.email?.enabled && !!s.email?.username_set && !!s.email?.password_set;
+    const mailNote = mailGood ? `${s.email.from || 'sender set'} via ${s.email.host}` : 'Set Postmark/SMTP env vars for verification emails.';
     const feedbackRows = (s.feedback || []).map(f=>`<div class="activity-item">
       <span class="activity-icon">${esc((f.category || 'fb').slice(0,2).toUpperCase())}</span>
       <div class="activity-copy"><b>${esc(f.user?.display_name || f.user?.handle || 'Unknown user')} - ${esc(f.category)}</b><span>${esc(f.message)}</span></div>
@@ -2938,6 +2947,7 @@ renderAdmin = async function(){
       <div class="admin-card"><span>Settlement cron</span><b class="admin-status ${cron.cls}">${esc(cron.label)}</b><small>${esc(cron.note)}</small></div>
       <div class="admin-card"><span>Database backup</span><b class="admin-status ${backup.cls}">${esc(backup.label)}</b><small>${esc(backup.note)}</small></div>
       <div class="admin-card"><span>Upload storage</span><b class="admin-status ${storageGood?'good':'bad'}">${esc((s.storage?.mode || 'local').toUpperCase())}</b><small>${storageGood ? esc(s.storage.public_url || s.storage.bucket || 'R2/S3 configured') : 'Production uploads need R2/S3.'}</small></div>
+      <div class="admin-card"><span>Email</span><b class="admin-status ${mailGood?'good':'bad'}">${mailGood?'ready':'setup'}</b><small>${esc(mailNote)}</small></div>
       <div class="admin-card"><span>Users</span><b>${s.counts.users}</b><small>${s.counts.blacklisted} blacklisted</small></div>
       <div class="admin-card"><span>Open action</span><b>${s.counts.open_picks}</b><small>${s.counts.open_slates} slates - ${s.counts.open_feedback || 0} reports</small></div>
     </div>

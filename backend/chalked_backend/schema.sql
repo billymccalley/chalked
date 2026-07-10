@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS users (
   display_name TEXT,
   avatar_url TEXT,
   last_handle_change_at TEXT,
+  terms_accepted_at TEXT,
+  privacy_accepted_at TEXT,
   password_hash TEXT NOT NULL,
   created_at TEXT NOT NULL
 );

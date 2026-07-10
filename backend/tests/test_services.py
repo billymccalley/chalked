@@ -270,6 +270,14 @@ class ServiceTests(unittest.TestCase):
                 create_user(conn, {"handle": "takenname", "email": "other@example.com", "password": "secret123"})
             self.assertEqual(duplicate.exception.status, 409)
 
+    def test_user_terms_acceptance_is_recorded(self):
+        with transaction(self.db_path) as conn:
+            user = create_user(conn, {"handle": "termsok", "email": "terms@example.com", "password": "secret123", "accept_terms": True})
+            public = services.public_user(user)
+
+            self.assertTrue(public["terms_accepted_at"])
+            self.assertEqual(public["terms_accepted_at"], public["privacy_accepted_at"])
+
     def test_email_verification_and_password_reset_use_one_time_tokens(self):
         with transaction(self.db_path) as conn:
             user = create_user(conn, {"handle": "mailme", "email": "mailme@example.com", "password": "secret123"})
@@ -344,8 +352,10 @@ class ServiceTests(unittest.TestCase):
 
     def test_admin_can_blacklist_and_clear_accounts(self):
         old_admins = os.environ.get("CHALKED_ADMIN_HANDLES")
+        old_smtp = os.environ.get("CHALKED_SMTP_HOST")
         try:
             os.environ["CHALKED_ADMIN_HANDLES"] = "boss"
+            os.environ.pop("CHALKED_SMTP_HOST", None)
             with transaction(self.db_path) as conn:
                 ensure_seeded(conn)
                 admin = create_user(conn, {"handle": "boss", "password": "secret123"})
@@ -357,6 +367,8 @@ class ServiceTests(unittest.TestCase):
 
                 self.assertEqual(overview["counts"]["blacklisted"], 1)
                 self.assertEqual(overview["cron"]["value"]["result"]["checked"], 1)
+                self.assertFalse(overview["email"]["enabled"])
+                self.assertEqual(overview["email"]["port"], 587)
                 with self.assertRaises(ApiError) as blocked:
                     login(conn, {"login": "badacct", "password": "secret123"})
                 self.assertEqual(blocked.exception.status, 403)
@@ -369,6 +381,10 @@ class ServiceTests(unittest.TestCase):
                 os.environ.pop("CHALKED_ADMIN_HANDLES", None)
             else:
                 os.environ["CHALKED_ADMIN_HANDLES"] = old_admins
+            if old_smtp is None:
+                os.environ.pop("CHALKED_SMTP_HOST", None)
+            else:
+                os.environ["CHALKED_SMTP_HOST"] = old_smtp
 
     def test_rate_limit_blocks_after_limit(self):
         with transaction(self.db_path) as conn:

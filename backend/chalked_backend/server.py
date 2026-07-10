@@ -338,11 +338,14 @@ def backup_system_route(req: RequestHandler, _: dict[str, str]) -> dict:
 
 def register(req: RequestHandler, _: dict[str, str]) -> object:
     data = req.read_json()
+    if not data.get("accept_terms"):
+        raise ApiError(400, "You must accept the Terms and Privacy Policy to create an account")
     with transaction() as conn:
         ensure_seeded(conn)
         user = create_user(conn, data)
+        verification = request_email_verification(conn, user["id"]) if user.get("email") else None
         public, session_id = login(conn, {"handle": data["handle"], "password": data["password"]}, req.session_meta())
-        req.write_json({"user": public_user(user), "session_user": public}, cookie=cookie_header(session_id, secure=req.is_https()))
+        req.write_json({"user": public_user(user), "session_user": public, "verification": verification}, cookie=cookie_header(session_id, secure=req.is_https()))
         return _AlreadyWritten()
 
 

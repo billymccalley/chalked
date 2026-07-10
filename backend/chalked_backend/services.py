@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from .db import row_to_dict
-from .mailer import public_url, send_email, smtp_enabled
+from .mailer import public_url, send_email, smtp_enabled, smtp_status
 from .providers import (
     STAT_RULES,
     MlbLiveFeedProvider,
@@ -71,6 +71,8 @@ def public_user(row: sqlite3.Row | dict) -> dict[str, Any]:
         "avatar_url": row["avatar_url"],
         "email_verified_at": row["email_verified_at"] if "email_verified_at" in row.keys() else None,
         "last_handle_change_at": row["last_handle_change_at"] if "last_handle_change_at" in row.keys() else None,
+        "terms_accepted_at": row["terms_accepted_at"] if "terms_accepted_at" in row.keys() else None,
+        "privacy_accepted_at": row["privacy_accepted_at"] if "privacy_accepted_at" in row.keys() else None,
         "is_admin": is_admin_user(row),
     }
 
@@ -194,6 +196,7 @@ def create_user(conn: sqlite3.Connection, data: dict, bot: bool = False) -> dict
     user_id = new_id("usr")
     handle = str(data["handle"]).strip()
     email = str(data.get("email") or "").strip().lower() or None
+    accepted_at = now_iso() if data.get("accept_terms") or data.get("terms_accepted") or bot else None
     if len(handle) < 3:
         raise ApiError(400, "Username must be at least 3 characters")
     existing = conn.execute(
@@ -206,13 +209,19 @@ def create_user(conn: sqlite3.Connection, data: dict, bot: bool = False) -> dict
         raise ApiError(409, "Username or email is already taken")
     try:
         conn.execute(
-            "INSERT INTO users (id, handle, email, display_name, avatar_url, password_hash, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            """
+            INSERT INTO users (
+              id, handle, email, display_name, avatar_url, terms_accepted_at, privacy_accepted_at, password_hash, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
             (
                 user_id,
                 handle,
                 email,
                 data.get("display_name") or handle,
                 data.get("avatar_url"),
+                accepted_at,
+                accepted_at,
                 hash_password(data["password"]),
                 now_iso(),
             ),
@@ -704,10 +713,22 @@ def admin_overview(conn: sqlite3.Connection, user_id: str) -> dict:
         LIMIT 100
         """
     ).fetchall()
+    last_mail = conn.execute(
+        """
+        SELECT recipient, subject, status, error, sent_at, created_at
+        FROM email_outbox
+        ORDER BY created_at DESC
+        LIMIT 1
+        """
+    ).fetchone()
     return {
         "counts": counts,
         "cron": system_status(conn, "settlement"),
         "backup": system_status(conn, "backup"),
+        "email": {
+            **smtp_status(),
+            "last": row_to_dict(last_mail) if last_mail else None,
+        },
         "feedback": latest_feedback(conn),
         "users": [
             {
