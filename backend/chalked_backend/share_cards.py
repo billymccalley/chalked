@@ -68,10 +68,10 @@ def render_matchup_card_png(share: dict[str, Any], static_root: Path) -> bytes:
     draw_header(image, draw, fonts, share, static_root)
 
     players = share["players"]
-    draw_player(image, draw, fonts, players["a"], share, "a", (72, 174, 492, 402))
-    draw_tie(draw, fonts, share, (520, 232, 680, 344))
-    draw_player(image, draw, fonts, players["b"], share, "b", (708, 174, 1128, 402))
-    draw_market(draw, fonts, share, 84, 438, 1032, 18)
+    draw_player(image, draw, fonts, players["a"], share, "a", (72, 178, 506, 356))
+    draw_tie(draw, fonts, share, (532, 229, 668, 306))
+    draw_player(image, draw, fonts, players["b"], share, "b", (694, 178, 1128, 356))
+    draw_market(image, draw, fonts, share, 84, 414, 1032, 18)
     draw_pick_strip(draw, fonts, share)
 
     out = BytesIO()
@@ -108,11 +108,23 @@ def add_logo(image: Image.Image, static_root: Path, xy: tuple[int, int], size: i
     logo_path = static_root / "assets" / "chalked-logo-mark.png"
     if not logo_path.exists():
         return
-    logo = Image.open(logo_path).convert("RGBA").resize((size, size), Image.Resampling.LANCZOS)
-    halo = Image.new("RGBA", logo.size, (255, 197, 61, 0))
-    halo.putalpha(logo.getchannel("A").filter(ImageFilter.GaussianBlur(10)))
-    image.alpha_composite(halo, xy)
+    logo = Image.open(logo_path).convert("RGBA")
+    logo = remove_dark_backdrop(logo).resize((size, size), Image.Resampling.LANCZOS)
+    shadow = Image.new("RGBA", logo.size, (0, 0, 0, 0))
+    shadow.putalpha(logo.getchannel("A").filter(ImageFilter.GaussianBlur(5)))
+    image.alpha_composite(shadow, (xy[0] + 1, xy[1] + 3))
     image.alpha_composite(logo, xy)
+
+
+def remove_dark_backdrop(image: Image.Image) -> Image.Image:
+    pixels = []
+    for r, g, b, a in image.getdata():
+        if r < 12 and g < 12 and b < 12:
+            pixels.append((r, g, b, 0))
+        else:
+            pixels.append((r, g, b, a))
+    image.putdata(pixels)
+    return image
 
 
 def draw_player(
@@ -132,21 +144,20 @@ def draw_player(
     border = GOLD if selected or winner else LINE
 
     draw.rounded_rectangle(box, radius=22, fill=PANEL, outline=border, width=2 if selected or winner else 1)
-    draw.rounded_rectangle((x1, y1, x2, y1 + 5), radius=22, fill=color)
-    draw_headshot(image, draw, fonts, player, color, (x1 + 28, y1 + 38), 84)
+    draw_headshot(image, draw, fonts, player, color, (x1 + 28, y1 + 33), 76)
 
-    name = clamp_text(draw, str(player.get("name") or "Player"), fonts.player, x2 - x1 - 148)
-    draw.text((x1 + 130, y1 + 40), name, font=fonts.player, fill=TEXT)
+    name = clamp_text(draw, str(player.get("name") or "Player"), fonts.player, x2 - x1 - 136)
+    draw.text((x1 + 120, y1 + 36), name, font=fonts.player, fill=TEXT)
     opp = f" vs {player.get('opponent')}" if player.get("opponent") else ""
     meta = f"{team} - {player.get('position') or ''}{opp}".strip()
-    draw.text((x1 + 130, y1 + 80), clamp_text(draw, meta, fonts.body, x2 - x1 - 154), font=fonts.body, fill=MUTED)
+    draw.text((x1 + 120, y1 + 74), clamp_text(draw, meta, fonts.body, x2 - x1 - 144), font=fonts.body, fill=MUTED)
 
     stat = value_for_side(share, side)
-    draw.text((x1 + 30, y1 + 144), stat["label"], font=fonts.label, fill=FAINT)
-    draw.text((x1 + 30, y1 + 168), stat["value"], font=fonts.big, fill=TEXT)
+    draw.text((x1 + 30, y2 - 59), stat["value"], font=fonts.big, fill=TEXT)
     mult = f"{float((share.get('multipliers') or {}).get(side) or 0):.2f}x"
-    draw.rounded_rectangle((x2 - 126, y2 - 60, x2 - 30, y2 - 22), radius=12, fill="#101823", outline=(255, 197, 61, 120), width=1)
-    draw.text((x2 - 112, y2 - 52), mult, font=fonts.odds, fill=GOLD)
+    odds_w = text_width(draw, mult, fonts.odds) + 30
+    draw.rounded_rectangle((x2 - odds_w - 30, y2 - 56, x2 - 30, y2 - 22), radius=11, fill="#101823", outline=(255, 197, 61, 120), width=1)
+    draw.text((x2 - odds_w - 15, y2 - 49), mult, font=fonts.odds, fill=GOLD)
 
 
 def draw_headshot(
@@ -192,21 +203,30 @@ def draw_tie(draw: ImageDraw.ImageDraw, fonts: "FontBook", share: dict[str, Any]
     x1, y1, x2, y2 = box
     selected = share.get("pick", {}).get("side") == "tie"
     winner = share.get("winner_side") == "tie"
+    draw.text((x1 + 52, y1 - 30), "VS", font=fonts.label, fill=FAINT)
     draw.rounded_rectangle(box, radius=18, fill="#0A111A", outline=GOLD if selected or winner else LINE, width=2 if selected or winner else 1)
-    draw.text((x1 + 51, y1 + 28), "TIE", font=fonts.tie, fill=GOLD)
-    draw.text((x1 + 45, y1 + 64), f"{float((share.get('multipliers') or {}).get('tie') or 0):.2f}x", font=fonts.body, fill=MUTED)
+    draw.text((x1 + 47, y1 + 15), "TIE", font=fonts.tie, fill=GOLD)
+    mult = f"{float((share.get('multipliers') or {}).get('tie') or 0):.2f}x"
+    draw.text((x1 + (x2 - x1 - text_width(draw, mult, fonts.body)) / 2, y1 + 43), mult, font=fonts.body, fill=MUTED)
 
 
-def draw_market(draw: ImageDraw.ImageDraw, fonts: "FontBook", share: dict[str, Any], x: int, y: int, width: int, height: int) -> None:
+def draw_market(image: Image.Image, draw: ImageDraw.ImageDraw, fonts: "FontBook", share: dict[str, Any], x: int, y: int, width: int, height: int) -> None:
     market = share.get("market") or {}
     total = max(1, int(market.get("total") or 1))
     a_w = int(width * int(market.get("a") or 0) / total)
     t_w = int(width * int(market.get("tie") or 0) / total)
     b_w = max(0, width - a_w - t_w)
-    draw.rounded_rectangle((x, y, x + width, y + height), radius=99, fill="#243246")
-    draw.rounded_rectangle((x, y, x + a_w, y + height), radius=99, fill="#D64A40")
-    draw.rectangle((x + a_w, y, x + a_w + t_w, y + height), fill=GOLD)
-    draw.rounded_rectangle((x + a_w + t_w, y, x + a_w + t_w + b_w, y + height), radius=99, fill=GREEN)
+    layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
+    layer_draw = ImageDraw.Draw(layer)
+    layer_draw.rounded_rectangle((x, y, x + width, y + height), radius=height // 2, fill="#243246")
+    layer_draw.rectangle((x, y, x + a_w, y + height), fill="#D84A40")
+    layer_draw.rectangle((x + a_w, y, x + a_w + t_w, y + height), fill=GOLD)
+    layer_draw.rectangle((x + a_w + t_w, y, x + a_w + t_w + b_w, y + height), fill=GREEN)
+    mask = Image.new("L", image.size, 0)
+    ImageDraw.Draw(mask).rounded_rectangle((x, y, x + width, y + height), radius=height // 2, fill=255)
+    layer.putalpha(mask)
+    image.alpha_composite(layer)
+    draw.rounded_rectangle((x, y, x + width, y + height), radius=height // 2, outline=(255, 255, 255, 18), width=1)
 
     pct_a = round(100 * int(market.get("a") or 0) / total)
     pct_t = round(100 * int(market.get("tie") or 0) / total)
@@ -325,7 +345,7 @@ class FontBook:
         font_dir = static_root / "assets" / "fonts"
         self.brand = load_font(38, black=True, font_dir=font_dir)
         self.player = load_font(29, bold=True, font_dir=font_dir)
-        self.big = load_font(48, black=True, font_dir=font_dir)
+        self.big = load_font(43, black=True, font_dir=font_dir)
         self.initials = load_font(26, bold=True, font_dir=font_dir)
         self.body = load_font(22, font_dir=font_dir)
         self.body_b = load_font(23, bold=True, font_dir=font_dir)
