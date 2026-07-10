@@ -139,7 +139,7 @@ def draw_player(
     x1, y1, x2, y2 = box
     team = str(player.get("team") or "")
     color = TEAM_COLORS.get(team, GOLD)
-    selected = share.get("pick", {}).get("side") == side
+    selected = (share.get("pick") or {}).get("side") == side
     winner = share.get("winner_side") == side
     border = GOLD if selected or winner else LINE
 
@@ -201,7 +201,7 @@ def fetch_player_headshot(external_id: Any, size: int) -> Image.Image | None:
 
 def draw_tie(draw: ImageDraw.ImageDraw, fonts: "FontBook", share: dict[str, Any], box: tuple[int, int, int, int]) -> None:
     x1, y1, x2, y2 = box
-    selected = share.get("pick", {}).get("side") == "tie"
+    selected = (share.get("pick") or {}).get("side") == "tie"
     winner = share.get("winner_side") == "tie"
     draw.text((x1 + 52, y1 - 30), "VS", font=fonts.label, fill=FAINT)
     draw.rounded_rectangle(box, radius=18, fill="#0A111A", outline=GOLD if selected or winner else LINE, width=2 if selected or winner else 1)
@@ -221,9 +221,13 @@ def draw_market(image: Image.Image, draw: ImageDraw.ImageDraw, fonts: "FontBook"
     layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
     layer_draw = ImageDraw.Draw(layer)
     layer_draw.rounded_rectangle((x, y, x + width, y + height), radius=height // 2, fill="#243246")
-    draw_gradient(layer, x, y, max(1, a_w), height, color_a, blend_hex(color_a, GOLD, 0.18))
-    draw_gradient(layer, x + a_w, y, max(1, t_w), height, blend_hex(color_a, GOLD, 0.68), blend_hex(GOLD, color_b, 0.32))
-    draw_gradient(layer, x + a_w + t_w, y, max(1, b_w), height, blend_hex(GOLD, color_b, 0.18), color_b)
+    draw_gradient(layer, x, y, max(1, a_w), height, color_a, blend_hex(color_a, "#FFFFFF", 0.08))
+    draw_gradient(layer, x + a_w + t_w, y, max(1, b_w), height, blend_hex(color_b, "#FFFFFF", 0.08), color_b)
+    if t_w > 0:
+        layer_draw.rectangle((x + a_w, y, x + a_w + t_w, y + height), fill=GOLD)
+        divider = (10, 15, 22, 72)
+        layer_draw.rectangle((x + a_w - 1, y, x + a_w + 1, y + height), fill=divider)
+        layer_draw.rectangle((x + a_w + t_w - 1, y, x + a_w + t_w + 1, y + height), fill=divider)
     mask = Image.new("L", image.size, 0)
     ImageDraw.Draw(mask).rounded_rectangle((x, y, x + width, y + height), radius=height // 2, fill=255)
     layer.putalpha(mask)
@@ -293,8 +297,9 @@ def draw_pick_strip(draw: ImageDraw.ImageDraw, fonts: "FontBook", share: dict[st
     pick = share.get("pick")
     draw.rounded_rectangle((72, 520, 1128, 574), radius=18, fill="#090F17", outline=(255, 197, 61, 80), width=1)
     if not pick:
-        draw.text((98, 534), "Open this matchup on Chalked and find your edge.", font=fonts.body_b, fill=TEXT)
-        draw.text((848, 535), "playchalked.com", font=fonts.body_b, fill=GOLD)
+        draw.text((98, 534), "OPEN MATCHUP", font=fonts.body_b, fill=GOLD)
+        draw.text((298, 534), "Pick a player, call the tie, or fade the crowd.", font=fonts.body_b, fill=TEXT)
+        draw.text((1128 - text_width(draw, "playchalked.com", fonts.body_b) - 26, 534), "playchalked.com", font=fonts.body_b, fill=MUTED)
         return
     actor = pick.get("display_name") or pick.get("handle") or "A manager"
     side = pick.get("side_label") or "a side"

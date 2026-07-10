@@ -198,6 +198,9 @@ class ServiceTests(unittest.TestCase):
             share = public_matchup_share(conn, matchup_id, pick["id"])
             png = render_matchup_card_png(share, Path("backend/static"))
             image = Image.open(BytesIO(png))
+            open_share = public_matchup_share(conn, matchup_id)
+            open_png = render_matchup_card_png(open_share, Path("backend/static"))
+            open_image = Image.open(BytesIO(open_png))
 
             self.assertEqual(share["id"], matchup_id)
             self.assertEqual(share["league_name"], "Share League")
@@ -206,6 +209,8 @@ class ServiceTests(unittest.TestCase):
             self.assertEqual(set(share["players"].keys()), {"a", "b"})
             self.assertEqual(share["pick"]["id"], pick["id"])
             self.assertEqual(image.size, (1200, 630))
+            self.assertIsNone(open_share["pick"])
+            self.assertEqual(open_image.size, (1200, 630))
 
     def test_next_slate_advances_after_settled_week(self):
         with transaction(self.db_path) as conn:
