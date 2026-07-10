@@ -2205,7 +2205,7 @@ function addAuthPanel(){
       <div class="auth-badge">LIVE BACKEND</div>
     </div>
     <div class="auth-grid">
-      <div class="auth-field"><label>Username or email</label><input id="authHandle" placeholder="username or email" autocomplete="username"></div>
+      <div class="auth-field"><label>Username or email</label><input id="authHandle" maxlength="120" placeholder="username or email" autocomplete="username"><small style="color:var(--faint)">New usernames: 3-20 chars, letters/numbers/._-</small></div>
       <div class="auth-field"><label>Password</label><div class="password-wrap"><input id="authPassword" placeholder="8+ characters" type="password" autocomplete="current-password"><button class="pw-toggle" type="button" onclick="togglePassword('authPassword', this)">Show</button></div></div>
       <div class="auth-field"><label>Email for new account</label><input id="authEmail" placeholder="you@email.com" autocomplete="email"></div>
       <div class="auth-field"><label>Display name</label><input id="authDisplayName" placeholder="How leagues see you" autocomplete="nickname"></div>
@@ -2860,7 +2860,7 @@ renderProfile = function(){
   $('#profileEditor').innerHTML = `<div class="profile-editor">
     <div class="profile-head"><div class="profile-avatar">${avatar}</div><div><h3>${esc(p.display_name || p.handle || 'You')}</h3><p style="color:var(--muted);font-size:13px">@${esc(p.handle || '')} ${p.email_verified_at?'<span class="chip live">email verified</span>':'<span class="chip">email unverified</span>'}</p></div></div>
     <div class="form-grid">
-      <div class="form-field"><label>Username</label><input id="profileHandle" value="${esc(p.handle || '')}"></div>
+      <div class="form-field"><label>Username</label><input id="profileHandle" maxlength="20" value="${esc(p.handle || '')}"><small>3-20 chars. Letters, numbers, dots, underscores, hyphens.</small></div>
       <div class="form-field"><label>Display name</label><input id="profileDisplayName" value="${esc(p.display_name || '')}"></div>
       <div class="form-field" style="grid-column:1/-1"><label>Email login</label><input id="profileEmail" value="${esc(p.email || '')}" placeholder="you@example.com"></div>
       <div class="form-field"><label>Profile picture upload</label>

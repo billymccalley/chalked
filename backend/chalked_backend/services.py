@@ -45,6 +45,7 @@ DEFAULT_SETTINGS = {
 }
 
 PLAYOFF_SIZES = {4, 6, 8, 10, 12, 14, 16}
+HANDLE_RE = re.compile(r"^[A-Za-z0-9._-]{3,20}$")
 
 BOT_HANDLES = ["MoonshotMaria", "K_Machine", "BackdoorSlider", "CheeseAt99", "RallyCapRandy"]
 PITCHER_STAT_GROUPS = ("K", "BF", "IP")
@@ -81,6 +82,13 @@ def require_fields(data: dict, *fields: str) -> None:
     missing = [f for f in fields if not data.get(f)]
     if missing:
         raise ApiError(400, f"Missing required field: {', '.join(missing)}")
+
+
+def clean_handle(value: object) -> str:
+    handle = str(value or "").strip()
+    if not HANDLE_RE.fullmatch(handle):
+        raise ApiError(400, "Username must be 3-20 characters and can only use letters, numbers, dots, underscores, or hyphens")
+    return handle
 
 
 def demo_seed_enabled() -> bool:
@@ -194,11 +202,9 @@ def ensure_seeded(conn: sqlite3.Connection, sync_players: bool = False) -> None:
 def create_user(conn: sqlite3.Connection, data: dict, bot: bool = False) -> dict:
     require_fields(data, "handle", "password")
     user_id = new_id("usr")
-    handle = str(data["handle"]).strip()
+    handle = clean_handle(data["handle"])
     email = str(data.get("email") or "").strip().lower() or None
     accepted_at = now_iso() if data.get("accept_terms") or data.get("terms_accepted") or bot else None
-    if len(handle) < 3:
-        raise ApiError(400, "Username must be at least 3 characters")
     existing = conn.execute(
         "SELECT 1 FROM users WHERE lower(handle) = ? OR (? IS NOT NULL AND lower(email) = ?)",
         (handle.lower(), email, email),
@@ -786,9 +792,7 @@ def update_profile(conn: sqlite3.Connection, user_id: str, data: dict) -> dict:
     if not current:
         raise ApiError(404, "User not found")
     if "handle" in data:
-        handle = str(data["handle"]).strip()
-        if len(handle) < 3:
-            raise ApiError(400, "Username must be at least 3 characters")
+        handle = clean_handle(data["handle"])
         if handle.lower() != str(current["handle"]).lower():
             last_change = current["last_handle_change_at"]
             if last_change:

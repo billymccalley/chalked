@@ -270,6 +270,21 @@ class ServiceTests(unittest.TestCase):
                 create_user(conn, {"handle": "takenname", "email": "other@example.com", "password": "secret123"})
             self.assertEqual(duplicate.exception.status, 409)
 
+    def test_username_rules_allow_safe_symbols_and_reject_bad_values(self):
+        with transaction(self.db_path) as conn:
+            user = create_user(conn, {"handle": "good.name_1-2", "email": "good@example.com", "password": "secret123"})
+            self.assertEqual(user["handle"], "good.name_1-2")
+
+            for handle in ("ab", "has space", "bad!name", "abcdefghijklmnopqrstu"):
+                with self.assertRaises(ApiError) as invalid:
+                    create_user(conn, {"handle": handle, "email": f"{handle.replace(' ', '')}@example.com", "password": "secret123"})
+                self.assertEqual(invalid.exception.status, 400)
+
+            existing = create_user(conn, {"handle": "editme", "password": "secret123"})
+            with self.assertRaises(ApiError) as invalid_update:
+                update_profile(conn, existing["id"], {"handle": "bad name"})
+            self.assertEqual(invalid_update.exception.status, 400)
+
     def test_user_terms_acceptance_is_recorded(self):
         with transaction(self.db_path) as conn:
             user = create_user(conn, {"handle": "termsok", "email": "terms@example.com", "password": "secret123", "accept_terms": True})
