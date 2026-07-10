@@ -195,6 +195,7 @@ class ServiceTests(unittest.TestCase):
 
             self.assertNotEqual(first["id"], second["id"])
             self.assertEqual(second["week"], first["week"] + 1)
+            self.assertEqual(second["day"], 2)
 
     def test_settled_open_slate_rolls_forward_to_new_active_slate(self):
         with transaction(self.db_path) as conn:

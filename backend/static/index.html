@@ -96,6 +96,11 @@ a{color:var(--blue)}
 .auth-title i{font-style:normal;color:var(--gold)}
 .auth-sub{font-size:12.5px;color:var(--muted);margin-top:2px}
 .auth-badge{font-family:var(--mono);font-size:11px;color:var(--gold);border:1px solid rgba(255,197,61,.28);background:rgba(255,197,61,.08);border-radius:99px;padding:5px 8px;white-space:nowrap}
+.auth-switch{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:13px;background:rgba(8,12,18,.68);border:1px solid rgba(139,159,184,.14);border-radius:13px;padding:5px}
+.auth-switch button{border-radius:9px;padding:9px 10px;font-family:var(--disp);font-weight:800;color:var(--muted);background:transparent;border:1px solid transparent}
+.auth-switch button.on{color:#1A1200;background:linear-gradient(135deg,#FFD65A,#FFAB1A);box-shadow:0 8px 20px rgba(255,180,40,.18)}
+.auth-panel-login .register-only,.auth-panel-register .login-only{display:none!important}
+.auth-mode-note{margin:-2px 0 12px;color:var(--muted);font-size:12.5px;border-left:3px solid rgba(255,197,61,.65);padding-left:10px}
 .auth-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
 .auth-field{display:flex;flex-direction:column;gap:5px}
 .auth-field label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#F3F6FA;font-weight:800}
@@ -437,6 +442,7 @@ table.board{width:100%;border-collapse:collapse;background:linear-gradient(180de
 .modal .stepdot{width:8px;height:8px;border-radius:50%;background:var(--line)}
 .modal .stepdot.on{background:var(--gold)}
 .modal .btn{margin-top:12px}
+.modal-actions{display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap}
 
 /* results reveal */
 #reveal .modal{max-width:480px;text-align:left}
@@ -486,7 +492,7 @@ table.board{width:100%;border-collapse:collapse;background:linear-gradient(180de
     <div class="hero-copy">
       <div class="hero-kicker">Real MLB duels. Real league markets.</div>
       <h1><span class="l1">Pick the player.</span><br><span class="l2">Fade the crowd.</span></h1>
-      <p>Chalked turns daily MLB matchups into clean 1v1 player markets. Join a league, stake your weekly bankroll, and get paid more when you are right before everyone else catches up.</p>
+      <p>Chalked turns daily MLB matchups into clean 1v1 player markets. Join a league, stake your fresh slate bankroll, and get paid more when you are right before everyone else catches up.</p>
       <div class="hero-stats">
         <span><b>1v1</b> player duels</span>
         <span><b>Live</b> game locks</span>
@@ -539,7 +545,7 @@ table.board{width:100%;border-collapse:collapse;background:linear-gradient(180de
     <div>
       <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" style="vertical-align:-2px"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v4.5l3 2"/></svg>
       <span class="bb-count" id="lockCount">Locks in -</span>
-      <span class="decay-warn" id="decayWarn"> - bankroll resets to 1,000 every week</span>
+      <span class="decay-warn" id="decayWarn"> - fresh 1,000 pts every slate; season W/L stays</span>
     </div>
   </div>
 
@@ -626,7 +632,7 @@ table.board{width:100%;border-collapse:collapse;background:linear-gradient(180de
     </section>
 
     <section id="view-picks" class="hide">
-      <div class="section-h">This Week</div>
+      <div class="section-h">Current Slate</div>
       <div id="picksNow"></div>
       <div class="section-h" style="margin-top:26px">History</div>
       <div id="picksHist"></div>
@@ -670,16 +676,19 @@ table.board{width:100%;border-collapse:collapse;background:linear-gradient(180de
   <div class="modal">
     <div id="obBody"></div>
     <div class="steps" id="obDots"></div>
-    <button class="btn gold" id="obNext" onclick="obNext()">Next</button>
+    <div class="modal-actions">
+      <button class="btn ghost" id="obBack" onclick="obBack()">Back</button>
+      <button class="btn gold" id="obNext" onclick="obNext()">Next</button>
+    </div>
   </div>
 </div>
 
 <!-- results reveal -->
 <div class="overlay hide" id="reveal">
   <div class="modal">
-    <h3 id="rvTitle">Week 1 - Results</h3>
+    <h3 id="rvTitle">Week 1 - Day 1 Results</h3>
     <div id="rvRows"></div>
-    <div class="rv-total" id="rvTotal"><div class="lab">Net this week</div><div class="big" id="rvNet">+0</div></div>
+    <div class="rv-total" id="rvTotal"><div class="lab">Net this slate</div><div class="big" id="rvNet">+0</div></div>
     <div style="text-align:center"><button class="btn gold" id="rvClose" onclick="closeReveal()">See the damage</button></div>
   </div>
 </div>
@@ -892,7 +901,7 @@ const OPEN_LEAGUES = [
    desc:'Big underdog payouts and faster moving markets.',
    settings:{bankroll:1000,minStake:10,maxStake:1000,minMult:1.2,maxMult:5.0,streakStep:12,streakCap:60,marginBonus:0.35,matchups:10,drift:110}},
   {id:'open-casual', code:'FRIDAY', name:'Friday Night Sweat', ownerId:'f5', ownerName:'RallyCapRandy', memberCount:48,
-   desc:'Friendly bankrolls, softer stakes, and a clean weekly reset.',
+   desc:'Friendly bankrolls, softer stakes, and a clean daily slate reset.',
    settings:{bankroll:750,minStake:10,maxStake:250,minMult:1.2,maxMult:4.0,streakStep:8,streakCap:40,marginBonus:0.25,matchups:6,drift:60}},
 ];
 const BADGES = [
@@ -959,7 +968,7 @@ function makeLeague(opts={}){
     id: opts.id || ('lg-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6)),
     code: (opts.code || Math.random().toString(36).slice(2,8)).toUpperCase(),
     name: opts.name || 'My Chalked League',
-    desc: opts.desc || 'A private weekly sweat with custom market rules.',
+    desc: opts.desc || 'A private daily sweat with custom market rules.',
     visibility: opts.visibility || 'open',
     ownerId: opts.ownerId || 'me',
     ownerName: opts.ownerName || (opts.ownerId === 'me' ? 'You' : 'League Owner'),
@@ -975,7 +984,7 @@ function makeLeague(opts={}){
 }
 
 function seed(){
-  const home = makeLeague({id:'home', code:'CHALK', name:'Chalked', desc:'The main public Chalked league: balanced multipliers, weekly bankroll resets, and daily duels.'});
+  const home = makeLeague({id:'home', code:'CHALK', name:'Chalked', desc:'The main public Chalked league: balanced multipliers, fresh slate bankrolls, and daily duels.'});
   S = {activeLeagueId:home.id, leagues:[home], joinedOpen:{}, onboarded:false};
   DB.save(S);
 }
@@ -1199,7 +1208,7 @@ function renderLeagueSettings(){
       </div>
       <small>Images are uploaded to this site, then saved on the league.</small>
     </div>
-    ${settingSlider('bankroll','Weekly bankroll',500,2000,50,v=>`${v} pts`,'Fresh points available each week.')}
+    ${settingSlider('bankroll','Daily bankroll',500,2000,50,v=>`${v} pts`,'Fresh points available on every new slate.')}
     ${settingSlider('minStake','Minimum bet',10,200,10,v=>`${v} pts`,'Smallest lock allowed on any duel.')}
     ${settingSlider('maxStake','Maximum bet',100,Math.max(100,l.settings.bankroll),10,v=>`${v} pts`,'Caps single-pick exposure.')}
     ${settingSlider('minMult','Minimum multiplier',1,2,.1,v=>`${(+v).toFixed(1)}x`,'Floor for heavy chalk payouts.')}
@@ -1428,16 +1437,25 @@ function renderBank(){
   $('#streakNum').textContent = l.user.streak;
   $('#topLeagueName').textContent = l.name;
   $('#topLeagueCrown').classList.toggle('hide', !isOwner(l));
-  $('#decayWarn').textContent = ` - bankroll resets to ${l.settings.bankroll.toLocaleString()} every week`;
+  $('#decayWarn').textContent = ` - fresh ${l.settings.bankroll.toLocaleString()} pts every slate; season W/L stays`;
   const n = l.picks.length, dot = $('#pickDot');
   dot.textContent = n; dot.classList.toggle('hide', n===0);
+}
+
+function slateWeekDay(s){
+  const seq = Math.max(1, Number(s?.week || 1));
+  return {week:Math.ceil(seq / 7), day:((seq - 1) % 7) + 1};
+}
+function slateDayLabel(s){
+  const wd = slateWeekDay(s);
+  return `Week ${wd.week} - Day ${wd.day}`;
 }
 
 function renderSlate(){
   const l = L();
   const g = $('#slateGrid'); g.innerHTML='';
   if(!l){
-    $('#weekNum').textContent = 1;
+    $('#weekNum').textContent = '1 - Day 1';
     $('#slateSub').textContent = ' - join a league to see duels';
     const chip = $('#slateDataChip');
     if(chip) chip.textContent = 'No active league';
@@ -1445,7 +1463,8 @@ function renderSlate(){
     g.innerHTML = `<div class="empty" style="grid-column:1/-1"><b>No active league</b>Join or create a league to load a slate.</div>`;
     return;
   }
-  $('#weekNum').textContent = l.week;
+  const label = slateDayLabel(l).replace('Week ', '');
+  $('#weekNum').textContent = label;
   $('#slateSub').textContent = ' - '+l.matchups.length+' duels in '+l.name;
   const chip = $('#slateDataChip');
   if(chip) chip.textContent = l.phase==='open' ? 'Real MLB player pool' : 'Slate settled';
@@ -1459,7 +1478,7 @@ function renderSlate(){
     tabs.style.display = 'flex';
     tabs.style.gap = '8px';
     tabs.style.flexWrap = 'wrap';
-    tabs.innerHTML = l.slates.map(s=>`<button class="btn ${s.id===l.selectedSlateId?'gold':'ghost'}" onclick="selectSlate('${s.id}')">${esc(s.status==='open'?'Current':'Review')} Week ${s.week}</button>`).join('');
+    tabs.innerHTML = l.slates.map(s=>`<button class="btn ${s.id===l.selectedSlateId?'gold':'ghost'}" onclick="selectSlate('${s.id}')">${esc(s.status==='open'?'Current':'Review')} ${slateDayLabel(s)}</button>`).join('');
     if(l.phase !== 'open'){
       tabs.innerHTML += `<button class="btn" onclick="showSlateDamage()">See the damage</button>`;
     }
@@ -1484,6 +1503,19 @@ function selectSlate(id){
 function fmtGameTime(iso){
   if(!iso) return 'Game time TBA';
   return new Date(iso).toLocaleString([], {weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
+}
+function gameDayWord(iso){
+  if(!iso) return '';
+  const start = new Date(iso);
+  if(Number.isNaN(start.getTime())) return '';
+  const today = new Date();
+  const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
+  const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const diff = Math.round((startDay - todayDay) / 86400000);
+  if(diff === 0) return 'today';
+  if(diff === 1) return 'tomorrow';
+  if(diff === -1) return 'yesterday';
+  return start.toLocaleDateString([], {weekday:'short'});
 }
 function gameStatusText(m){
   const g = m.game || {};
@@ -1511,6 +1543,10 @@ function sideName(m, side){
 function sideColor(side){
   return side === 'a' ? 'var(--red)' : side === 'b' ? 'var(--blue)' : 'var(--gold)';
 }
+function opponentText(m, side){
+  const opp = m.playerInfo?.[side]?.opponent;
+  return opp ? ` vs ${esc(opp)}` : '';
+}
 function eligibilityTag(m, side){
   const info = m.playerInfo?.[side]?.eligibility || {};
   const g = playerGame(m, side);
@@ -1520,7 +1556,12 @@ function eligibilityTag(m, side){
   }
   const confidence = info.confidence || '';
   if(!confidence) return '';
-  const label = info.role === 'probable_starting_pitcher' ? 'SP today' : confidence === 'team_scheduled' ? 'plays today' : confidence;
+  const day = gameDayWord(g.start);
+  const label = info.role === 'probable_starting_pitcher'
+    ? `SP ${day || 'scheduled'}`
+    : confidence === 'team_scheduled'
+      ? `plays ${day || 'scheduled'}`
+      : confidence;
   return `<span class="elig-tag ${esc(confidence)}" title="${esc(info.reason || '')}">${esc(label)}</span>`;
 }
 function matchupLockMs(m){
@@ -1580,7 +1621,7 @@ function card(m){
       <div class="pside ${my&&my.side==='a'?'selA':''}" onclick="selSide('${m.id}','a')">
         ${avatarHTML(m.a,'a')}
         <div class="pname" style="color:var(--red)">${A.name}</div>
-        <div class="pteam">${A.team} - ${A.pos}</div>
+        <div class="pteam">${A.team} - ${A.pos}${opponentText(m,'a')}</div>
         ${eligibilityTag(m,'a')}
         <div class="p-live-line">${playerLiveLine(m,'a')}</div>
         <div class="mult ${multClass(mA)}" data-ms="a">${mA.toFixed(2)}x</div>
@@ -1595,7 +1636,7 @@ function card(m){
       <div class="pside ${my&&my.side==='b'?'selB':''}" onclick="selSide('${m.id}','b')">
         ${avatarHTML(m.b,'b')}
         <div class="pname" style="color:var(--blue)">${B.name}</div>
-        <div class="pteam">${B.team} - ${B.pos}</div>
+        <div class="pteam">${B.team} - ${B.pos}${opponentText(m,'b')}</div>
         ${eligibilityTag(m,'b')}
         <div class="p-live-line">${playerLiveLine(m,'b')}</div>
         <div class="mult ${multClass(mB)}" data-ms="b">${mB.toFixed(2)}x</div>
@@ -1813,7 +1854,7 @@ function renderPicks(){
   const now = $('#picksNow');
   if(!L()){
     now.innerHTML = `<div class="empty"><b>No active league</b>Join a league to start making picks.</div>`;
-    $('#picksHist').innerHTML = `<div class="empty"><b>No history yet</b>Your settled weeks will show here.</div>`;
+    $('#picksHist').innerHTML = `<div class="empty"><b>No history yet</b>Your settled slates will show here.</div>`;
     return;
   }
   if(!L().picks.length){
@@ -1834,12 +1875,12 @@ function renderPicks(){
   }
   const h = $('#picksHist');
   h.innerHTML = L().user.history.length ? L().user.history.slice().reverse().map(wk=>`
-    <div class="week-block"><h4><span>Week ${wk.week} - ${wk.w}W-${wk.l}L</span>
+    <div class="week-block"><h4><span>${slateDayLabel(wk)} - ${wk.w}W-${wk.l}L</span>
       <span class="net ${wk.net>=0?'pos':'neg'}" style="font-family:var(--mono)">${fmt(wk.net)}</span></h4>
       ${wk.rows.map(r=>`<div class="pickrow"><div><div class="pr-main">${r.txt}</div><div class="pr-sub">${r.sub}</div></div>
         <div class="pr-num"><span class="net ${r.net>=0?'pos':'neg'}" style="font-weight:700">${fmt(r.net)}</span></div></div>`).join('')}
     </div>`).join('')
-    : `<div class="empty"><b>Nothing settled yet</b>Your past weeks will show up here.</div>`;
+    : `<div class="empty"><b>Nothing settled yet</b>Your past slates will show up here.</div>`;
 }
 
 /* ---------- Leaderboard ---------- */
@@ -1955,7 +1996,7 @@ function simulateWeek(){
 function startNextWeek(){
   const l = L();
   l.week++;
-  l.user.bankTotal = l.settings.bankroll; // fresh league bankroll every week, no carryover
+  l.user.bankTotal = l.settings.bankroll; // fresh slate bankroll; settled season totals never carry back.
   l.picks = [];
   l.matchups = genWeek(l.week, l.settings.matchups);
   l.fakePicks = genFakePicks(l.matchups, l.settings);
@@ -1963,7 +2004,7 @@ function startNextWeek(){
   l.phase = 'open';
   DB.save(S);
   refresh();
-  toast(`Week ${l.week} slate is live - fresh ${l.settings.bankroll}-point bankroll`);
+  toast(`${slateDayLabel(l)} slate is live - fresh ${l.settings.bankroll}-point bankroll`);
 }
 
 /* ---------- reveal overlay ---------- */
@@ -1986,12 +2027,12 @@ function showSlateDamage(){
 }
 
 function showReveal(net, rows){
-  $('#rvTitle').textContent = `Week ${L().week} - Results`;
+  $('#rvTitle').textContent = `${slateDayLabel(L())} Results`;
   const box = $('#rvRows');
   box.innerHTML = rows.length ? rows.map(r=>`
     <div class="rv-row"><div class="rv-m">${r.txt}<small>${r.sub}</small></div>
     <div class="rv-net ${r.net>=0?'net pos':'net neg'}">${fmt(r.net)}</div></div>`).join('')
-    : `<p style="color:var(--muted);text-align:center;padding:14px 0">You sat this week out. The league did not.</p>`;
+    : `<p style="color:var(--muted);text-align:center;padding:14px 0">You sat this slate out. The league did not.</p>`;
   $('#rvNet').textContent = fmt(net);
   $('#rvNet').style.color = net>=0 ? 'var(--green)' : 'var(--loss)';
   $('#rvTotal').classList.remove('in');
@@ -2110,7 +2151,7 @@ function countLoop(){
     const league = L();
     if(!league) return;
     const el = $('#lockCount');
-    if(league.phase==='resolved'){ el.innerHTML = 'Slate settled - start next week'; return; }
+    if(league.phase==='resolved'){ el.innerHTML = 'Slate settled - next slate soon'; return; }
     const openLocks = (league.matchups || []).filter(m=>!isMatchupLocked(m)).map(matchupLockMs).filter(Number.isFinite);
     let ms = openLocks.length ? Math.min(...openLocks) : 0;
     const h = Math.floor(ms/3.6e6), mn = Math.floor(ms%3.6e6/6e4), sc = Math.floor(ms%6e4/1000);
@@ -2124,9 +2165,9 @@ function countLoop(){
 
 /* ---------- onboarding ---------- */
 const OB = [
-  {h:'Welcome to Chalked', p:`Every week: a slate of MLB player duels and <span class="k">1,000 points</span>. Pick winners, stake points, climb the board. No rosters to manage.`},
+  {h:'Welcome to Chalked', p:`Every slate: fresh MLB player duels and a fresh points bankroll. Pick winners, stake points, climb the board. No rosters to manage.`},
   {h:'The market pays contrarians', p:`Your payout multiplier is the inverse of your side's share of all staked points: <span class="k">mult = 1 / share, clamped 1.2x-4.0x</span>.<br><br>If 80% of points pile on the favorite, the other side pays up to 4x. Gold multipliers = the crowd left value on the table.`},
-  {h:'Stack your edge', p:`Win streaks add up to <span class="k">+50%</span> on every payout, and if your player beats the projection line by 20%+, tack on <span class="k">+0.25x</span>.<br><br>Your bankroll resets to a fresh 1,000 every week - conviction is the whole game.`},
+  {h:'Stack your edge', p:`Win streaks add up to <span class="k">+50%</span> on every payout, and if your player beats the projection line by 20%+, tack on <span class="k">+0.25x</span>.<br><br>Spent points do not come back into old results. Each new slate gives you a fresh bankroll, while wins, losses, and net points stay on your season total.`},
 ];
 let obI = 0;
 function showOnboard(){ obI = 0; obPaint(); $('#onboard').classList.remove('hide'); }
@@ -2134,7 +2175,13 @@ function onboardingKey(){ return `chalked_onboarded_${apiUser?.id || 'demo'}`; }
 function obPaint(){
   $('#obBody').innerHTML = `<h3>${OB[obI].h}</h3><p>${OB[obI].p}</p>`;
   $('#obDots').innerHTML = OB.map((_,i)=>`<span class="stepdot ${i===obI?'on':''}"></span>`).join('');
+  $('#obBack').classList.toggle('hide', obI===0);
   $('#obNext').textContent = obI===OB.length-1 ? "Let's go" : 'Next';
+}
+function obBack(){
+  if(obI <= 0) return;
+  obI--;
+  obPaint();
 }
 function obNext(){
   if(++obI >= OB.length){
@@ -2160,7 +2207,7 @@ function enterApp(){
   window.scrollTo(0,0);
   if(!S.onboarded) showOnboard();
 }
-function resetDemo(){ DB.wipe(); CHAT_STORE = {}; saveChatStore(); seed(); refresh(); tickerSeed(); toast('Demo reset - fresh Week 1 slate'); }
+function resetDemo(){ DB.wipe(); CHAT_STORE = {}; saveChatStore(); seed(); refresh(); tickerSeed(); toast('Demo reset - fresh Day 1 slate'); }
 
 /* ---------- boot ---------- */
 (function boot(){
@@ -2190,12 +2237,13 @@ let apiAdminStatus = null;
 const leagueLoadCache = new Map();
 const LEAGUE_CACHE_MS = 20000;
 const leagueLoadInflight = new Map();
+let authMode = 'login';
 
 function addAuthPanel(){
   if($('#authPanel')) return;
   const panel = document.createElement('div');
   panel.id = 'authPanel';
-  panel.className = 'auth-card';
+  panel.className = 'auth-card auth-panel-login';
   panel.innerHTML = `
     <div class="auth-head">
       <div class="auth-mark">
@@ -2204,32 +2252,64 @@ function addAuthPanel(){
       </div>
       <div class="auth-badge">LIVE BACKEND</div>
     </div>
+    <div class="auth-switch">
+      <button class="on" id="authModeLogin" type="button">Log in</button>
+      <button id="authModeRegister" type="button">Create account</button>
+    </div>
+    <div class="auth-mode-note" id="authModeNote">Use your username or email, then your password.</div>
     <div class="auth-grid">
-      <div class="auth-field"><label>Username or email</label><input id="authHandle" maxlength="120" placeholder="username or email" autocomplete="username"><small style="color:var(--faint)">New usernames: 3-20 chars, letters/numbers/._-</small></div>
+      <div class="auth-field"><label id="authHandleLabel">Username or email</label><input id="authHandle" maxlength="120" placeholder="username or email" autocomplete="username"><small id="authHandleHelp" style="color:var(--faint)">Use the username or email on your account.</small></div>
       <div class="auth-field"><label>Password</label><div class="password-wrap"><input id="authPassword" placeholder="8+ characters" type="password" autocomplete="current-password"><button class="pw-toggle" type="button" onclick="togglePassword('authPassword', this)">Show</button></div></div>
-      <div class="auth-field"><label>Email for new account</label><input id="authEmail" placeholder="you@email.com" autocomplete="email"></div>
-      <div class="auth-field"><label>Display name</label><input id="authDisplayName" placeholder="How leagues see you" autocomplete="nickname"></div>
-      <label class="legal-check"><input id="authAcceptTerms" type="checkbox"><span>I agree to the <a href="/terms.html" target="_blank" rel="noopener">Terms</a> and <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>. Chalked uses play-money points only.</span></label>
+      <div class="auth-field register-only"><label>Email for new account</label><input id="authEmail" placeholder="email address" autocomplete="email"></div>
+      <div class="auth-field register-only"><label>Display name</label><input id="authDisplayName" placeholder="How leagues see you" autocomplete="nickname"></div>
+      <label class="legal-check register-only"><input id="authAcceptTerms" type="checkbox"><span>I agree to the <a href="/terms.html" target="_blank" rel="noopener">Terms</a> and <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>. Chalked uses play-money points only.</span></label>
     </div>
     <div class="auth-actions">
-      <button class="btn gold" id="authLoginBtn" type="button">Login</button>
-      <button class="btn" id="authRegisterBtn" type="button">Register</button>
-      <button class="btn ghost" id="authResetBtn" type="button">Email reset</button>
+      <button class="btn gold login-only" id="authLoginBtn" type="button">Login</button>
+      <button class="btn gold register-only" id="authRegisterBtn" type="button">Create account</button>
+      <button class="btn ghost login-only" id="authResetBtn" type="button">Email reset</button>
       <button class="btn ghost hide" id="authConfirmResetBtn" type="button">Set new password</button>
-      <span id="authMsg" class="auth-msg">Register with your email, or log into an existing account.</span>
+      <span id="authMsg" class="auth-msg">Welcome back. Log in to keep picking.</span>
     </div>
-    <div class="auth-foot"><b>Fresh account?</b> Fill username, password, email, display name, accept the terms, then hit Register.</div>`;
+    <div class="auth-foot" id="authFoot"><b>New here?</b> Switch to Create account and we will only ask for what signup needs.</div>`;
   document.querySelector('.hero').after(panel);
+  $('#authModeLogin').addEventListener('click', ()=>setAuthMode('login'));
+  $('#authModeRegister').addEventListener('click', ()=>setAuthMode('register'));
   $('#authLoginBtn').addEventListener('click', apiLogin);
   $('#authRegisterBtn').addEventListener('click', apiRegister);
   $('#authResetBtn').addEventListener('click', requestPasswordReset);
   $('#authConfirmResetBtn').addEventListener('click', confirmPasswordReset);
+  setAuthMode('login');
   if(new URLSearchParams(location.search).get('reset')){
     $('#authConfirmResetBtn').classList.remove('hide');
     apiMsg('Enter your new password, then press Set new password.');
   }
   const verifyToken = new URLSearchParams(location.search).get('verify');
   if(verifyToken) confirmEmailFromLink(verifyToken);
+}
+
+function setAuthMode(mode){
+  authMode = mode === 'register' ? 'register' : 'login';
+  const panel = $('#authPanel');
+  if(!panel) return;
+  panel.classList.toggle('auth-panel-register', authMode === 'register');
+  panel.classList.toggle('auth-panel-login', authMode !== 'register');
+  $('#authModeLogin')?.classList.toggle('on', authMode === 'login');
+  $('#authModeRegister')?.classList.toggle('on', authMode === 'register');
+  const login = authMode === 'login';
+  $('#authHandleLabel').textContent = login ? 'Username or email' : 'Choose username';
+  $('#authHandle').placeholder = login ? 'username or email' : 'letters, numbers, . _ -';
+  $('#authHandle').autocomplete = login ? 'username' : 'username';
+  $('#authHandleHelp').textContent = login
+    ? 'Use the username or email on your account.'
+    : '3-20 characters. Letters, numbers, dots, underscores, or hyphens only.';
+  $('#authModeNote').textContent = login
+    ? 'Use your username or email, then your password.'
+    : 'Pick a username, add email and display name, then accept the terms.';
+  $('#authMsg').textContent = login ? 'Welcome back. Log in to keep picking.' : 'Create a fresh account for real leagues and saved picks.';
+  $('#authFoot').innerHTML = login
+    ? '<b>New here?</b> Switch to Create account and we will only ask for what signup needs.'
+    : '<b>Already have one?</b> Switch back to Log in. Your email can verify and recover the account later.';
 }
 
 async function apiFetch(path, opts={}){
@@ -2451,6 +2531,8 @@ function mapApiSlate(s){
   return {
     id:s.id,
     week:s.week,
+    day:s.day || (((s.week || 1) - 1) % 7) + 1,
+    gameDate:s.game_date,
     phase:s.status === 'open' ? 'open' : 'resolved',
     status:s.status,
     lockTime:Date.parse(s.locks_at),
@@ -2462,6 +2544,8 @@ function mapApiSlate(s){
 function applySlateView(l, slate){
   l.selectedSlateId = slate.id;
   l.week = slate.week;
+  l.day = slate.day || (((slate.week || 1) - 1) % 7) + 1;
+  l.gameDate = slate.gameDate;
   l.phase = slate.phase;
   l.lockTime = slate.lockTime;
   l.matchups = slate.matchups;
@@ -2534,11 +2618,13 @@ async function apiLoadLeague(id, force=false){
     const selected = mappedSlates.find(s=>s.id === l.selectedSlateId)
       || mappedSlates.find(s=>s.id === slates.active_slate_id)
       || mappedSlates[0]
-      || {id:null, week:1, phase:'open', lockTime:Date.now(), matchups:[], picks:[]};
+      || {id:null, week:1, day:1, phase:'open', lockTime:Date.now(), matchups:[], picks:[]};
     const loaded = {
       slates: mappedSlates,
       selectedSlateId: selected.id,
       week: selected.week,
+      day: selected.day,
+      gameDate: selected.gameDate,
       phase: selected.phase,
       lockTime: selected.lockTime,
       matchups: selected.matchups,

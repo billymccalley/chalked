@@ -1758,6 +1758,7 @@ def slate_dict(conn: sqlite3.Connection, slate: sqlite3.Row) -> dict:
         "id": slate["id"],
         "league_id": slate["league_id"],
         "week": slate["week"],
+        "day": ((slate["week"] - 1) % 7) + 1,
         "status": slate["status"],
         "game_date": slate["game_date"],
         "locks_at": slate["locks_at"],
@@ -2235,7 +2236,7 @@ def create_pick(conn: sqlite3.Connection, user_id: str, league_id: str, data: di
         (user_id, league_id, slate["id"]),
     ).fetchone()["total"]
     if staked + stake > league["bankroll"]:
-        raise ApiError(400, "Stake exceeds weekly bankroll")
+        raise ApiError(400, "Stake exceeds today's fresh slate bankroll")
     pick_id = new_id("pick")
     mult = multiplier(conn, league_id, matchup["id"], data["side"])
     try:
