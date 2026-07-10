@@ -130,7 +130,10 @@ a{color:var(--blue)}
   background:linear-gradient(135deg,rgba(255,197,61,.12),rgba(255,140,40,.06));border:1px solid rgba(255,197,61,.25);padding:4px 10px;border-radius:99px;box-shadow:0 0 14px rgba(255,197,61,.1)}
 .bank-pill{font-family:var(--mono);font-size:13px;font-weight:700;background:var(--panel);border:1px solid var(--line);
   padding:4px 12px;border-radius:99px}
-.bank-pill b{color:var(--green)}
+.bank-pill b{color:var(--muted)}
+.bank-pill b.pos{color:var(--green)}
+.bank-pill b.neg{color:var(--loss)}
+.bank-pill b.zero{color:var(--muted)}
 .league-pill{display:flex;align-items:center;gap:7px;font-family:var(--disp);font-size:13px;font-weight:700;background:var(--panel);
   border:1px solid var(--line);padding:4px 12px;border-radius:99px;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .league-pill .crown{color:var(--gold);font-size:13px}
@@ -380,15 +383,28 @@ a{color:var(--blue)}
 .chat-in input{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:8px 12px;border-radius:9px;font-size:13px}
 .chat-in input:focus{outline:1px solid var(--gold)}
 
-/* resolved card states */
-.match-card.won{border-color:rgba(46,217,138,.45);box-shadow:0 0 26px rgba(46,217,138,.09)}
-.match-card.lost{border-color:rgba(255,107,107,.35);box-shadow:0 0 26px rgba(255,107,107,.07)}
-.result-strip{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px;display:flex;justify-content:space-between;align-items:center;font-size:13px}
+.match-card.resolved{border-color:rgba(139,159,184,.24)}
+.match-card.won{border-color:rgba(46,217,138,.82);box-shadow:0 0 0 1px rgba(46,217,138,.2),0 0 34px rgba(46,217,138,.14)}
+.match-card.lost{border-color:rgba(255,107,107,.82);box-shadow:0 0 0 1px rgba(255,107,107,.2),0 0 34px rgba(255,107,107,.12)}
+.match-card.won::before,.match-card.lost::before{content:"";position:absolute;inset:0 auto 0 0;width:5px;background:var(--green);box-shadow:0 0 18px rgba(46,217,138,.5)}
+.match-card.lost::before{background:var(--loss);box-shadow:0 0 18px rgba(255,107,107,.45)}
+.match-card.resolved .pside{cursor:default}
+.match-card.resolved .pside:not(.winner-side){opacity:.5;filter:saturate(.75)}
+.match-card.resolved .pside.winner-side{border-color:rgba(46,217,138,.8);background:rgba(46,217,138,.08);box-shadow:inset 0 0 0 1px rgba(46,217,138,.18)}
+.match-card.resolved .pside.my-pick:not(.winner-side){opacity:1;border-color:rgba(255,107,107,.72);background:rgba(255,107,107,.08);box-shadow:inset 0 0 0 1px rgba(255,107,107,.14)}
+.match-card.resolved .tie-pick.winner-side{border-color:rgba(46,217,138,.8);background:rgba(46,217,138,.08);box-shadow:inset 0 0 0 1px rgba(46,217,138,.18)}
+.match-card.resolved .tie-pick.my-pick:not(.winner-side){border-color:rgba(255,107,107,.72);background:rgba(255,107,107,.08)}
+.result-strip{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px;display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;gap:8px;align-items:center;font-size:13px}
 .result-strip .rs-stat{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
 .result-strip .net{font-family:var(--mono);font-weight:700}
 .net.pos{color:var(--green)} .net.neg{color:var(--loss)} .net.zero{color:var(--faint)}
 .winner-tag{font-family:var(--disp);text-transform:uppercase;font-weight:800;font-size:13px;letter-spacing:.06em;padding:2px 8px;border-radius:6px}
 .winner-tag.A{color:var(--red);background:var(--red-dim)} .winner-tag.B{color:var(--blue);background:var(--blue-dim)}
+.winner-tag.T{color:var(--gold);background:rgba(255,197,61,.1)}
+.result-pill{font-family:var(--disp);font-weight:900;letter-spacing:.08em;font-size:12px;padding:5px 9px;border-radius:99px;border:1px solid var(--line);white-space:nowrap}
+.result-pill.win{color:var(--green);border-color:rgba(46,217,138,.42);background:rgba(46,217,138,.09)}
+.result-pill.loss{color:var(--loss);border-color:rgba(255,107,107,.42);background:rgba(255,107,107,.08)}
+.result-pill.final{color:var(--faint);border-color:rgba(139,159,184,.18);background:rgba(139,159,184,.05)}
 
 /* ---------- My Picks ---------- */
 .section-h{font-family:var(--disp);font-weight:800;font-size:19px;letter-spacing:-.02em;margin:8px 0 12px}
@@ -1422,6 +1438,7 @@ function renderBank(){
     $('#bankStaked').textContent = 0;
     $('#bankMeter').style.width = '0%';
     $('#seasonPts').textContent = '0';
+    $('#seasonPts').className = 'zero';
     $('#streakNum').textContent = 0;
     $('#topLeagueName').textContent = 'No league';
     $('#topLeagueCrown').classList.add('hide');
@@ -1433,7 +1450,9 @@ function renderBank(){
   $('#bankTotal').textContent = l.user.bankTotal;
   $('#bankStaked').textContent = stakedTotal();
   $('#bankMeter').style.width = (100*bankLeft()/l.user.bankTotal)+'%';
-  $('#seasonPts').textContent = fmt(l.user.season).replace('+0','0');
+  const season = Number(l.user.season || 0);
+  $('#seasonPts').textContent = fmt(season).replace('+0','0');
+  $('#seasonPts').className = signedClass(season);
   $('#streakNum').textContent = l.user.streak;
   $('#topLeagueName').textContent = l.name;
   $('#topLeagueCrown').classList.toggle('hide', !isOwner(l));
@@ -1543,6 +1562,10 @@ function sideName(m, side){
 function sideColor(side){
   return side === 'a' ? 'var(--red)' : side === 'b' ? 'var(--blue)' : 'var(--gold)';
 }
+function signedClass(value){
+  const n = Number(value || 0);
+  return n > 0 ? 'pos' : n < 0 ? 'neg' : 'zero';
+}
 function opponentText(m, side){
   const opp = m.playerInfo?.[side]?.opponent;
   return opp ? ` vs ${esc(opp)}` : '';
@@ -1602,12 +1625,16 @@ function card(m){
   const mA = mult(m,'a'), mB = mult(m,'b'), mT = mult(m,'tie');
   const my = L().picks.find(p=>p.matchupId===m.id);
   const el = document.createElement('div');
-  el.className = 'match-card' + (m.game?.is_live?' live':'') + (my?' committed':'') + (m.resolved ? (my ? (my.side===m.winner?' won':' lost') : '') : '');
+  el.className = 'match-card' + (m.game?.is_live?' live':'') + (my?' committed':'') + (m.resolved ? ` resolved ${my ? (my.side===m.winner?'won':'lost') : 'no-pick'}` : '');
   el.dataset.mid = m.id;
 
   const pctA = T? Math.round(100*sA/T) : 50;
   const pctT = T? Math.round(100*sT/T) : 0;
   const pctB = Math.max(0, 100 - pctA - pctT);
+  const sideState = side => [
+    my && my.side===side ? 'my-pick' : '',
+    m.resolved && m.winner===side ? 'winner-side' : ''
+  ].filter(Boolean).join(' ');
   el.innerHTML = `
     <div class="mc-top">
       <span class="stat-chip"><span class="emoji">&#9918;</span> ${(m.statCategory || '').replace('This Week','Game')}</span>
@@ -1618,7 +1645,7 @@ function card(m){
     </div>
     <div class="game-line">${m.game?.is_live?'<span class="live-dot"></span>':''}<span>${gameStatusText(m)}</span><span class="chip" data-lock-count="${m.id}">${lockCountdownText(m)}</span></div>
     <div class="mc-players">
-      <div class="pside ${my&&my.side==='a'?'selA':''}" onclick="selSide('${m.id}','a')">
+      <div class="pside ${my&&my.side==='a'?'selA':''} ${sideState('a')}" onclick="selSide('${m.id}','a')">
         ${avatarHTML(m.a,'a')}
         <div class="pname" style="color:var(--red)">${A.name}</div>
         <div class="pteam">${A.team} - ${A.pos}${opponentText(m,'a')}</div>
@@ -1628,12 +1655,12 @@ function card(m){
       </div>
       <div class="vs-col">
         <span class="vs">VS</span>
-        <div class="tie-pick ${my&&my.side==='tie'?'selT':''}" onclick="selSide('${m.id}','tie')" title="Pick both players to tie in ${m.unit}">
+        <div class="tie-pick ${my&&my.side==='tie'?'selT':''} ${sideState('tie')}" onclick="selSide('${m.id}','tie')" title="Pick both players to tie in ${m.unit}">
           <b>TIE</b>
           <small data-ms="tie">${mT.toFixed(2)}x</small>
         </div>
       </div>
-      <div class="pside ${my&&my.side==='b'?'selB':''}" onclick="selSide('${m.id}','b')">
+      <div class="pside ${my&&my.side==='b'?'selB':''} ${sideState('b')}" onclick="selSide('${m.id}','b')">
         ${avatarHTML(m.b,'b')}
         <div class="pname" style="color:var(--blue)">${B.name}</div>
         <div class="pteam">${B.team} - ${B.pos}${opponentText(m,'b')}</div>
@@ -1662,12 +1689,15 @@ function renderStakeArea(el, m){
   if(m.resolved){
     const A = PLAYERS[m.a], B = PLAYERS[m.b];
     const wname = sideName(m, m.winner);
+    const resultClass = my ? (my.side===m.winner ? 'win' : 'loss') : 'final';
+    const resultLabel = my ? (my.side===m.winner ? 'YOU WON' : 'YOU LOST') : 'FINAL';
     let netHTML = `<span class="net zero">no pick</span>`;
     if(my){
       const won = my.side===m.winner;
       netHTML = `<span class="net ${won?'pos':'neg'}">${won?fmt(my.payout):'-'+my.stake}</span>`;
     }
     box.innerHTML = `<div class="result-strip">
+        <span class="result-pill ${resultClass}">${resultLabel}</span>
         <span class="winner-tag ${m.winner==='a'?'A':m.winner==='b'?'B':'T'}">WIN ${wname}</span>
         <span class="rs-stat">${m.actualA} - ${m.actualB} ${m.unit}${m.marginBonusHit?' - +'+L().settings.marginBonus.toFixed(2)+'x margin':''}</span>
         ${netHTML}</div>`;
@@ -1852,21 +1882,23 @@ function go(v){
 /* ---------- My Picks ---------- */
 function renderPicks(){
   const now = $('#picksNow');
-  if(!L()){
+  const l = L();
+  if(!l){
     now.innerHTML = `<div class="empty"><b>No active league</b>Join a league to start making picks.</div>`;
     $('#picksHist').innerHTML = `<div class="empty"><b>No history yet</b>Your settled slates will show here.</div>`;
     return;
   }
-  if(!L().picks.length){
+  if(!l.picks.length){
     now.innerHTML = `<div class="empty"><b>No picks yet</b>Head to the slate and back somebody before lock.</div>`;
   } else {
-    now.innerHTML = L().picks.map(p=>{
-      const m = L().matchups.find(x=>x.id===p.matchupId);
+    now.innerHTML = l.picks.map(p=>{
+      const m = l.matchups.find(x=>x.id===p.matchupId);
+      if(!m) return '';
       const won = m.resolved ? p.side===m.winner : null;
-      const opp = p.side === 'tie' ? 'both players' : PLAYERS[m[p.side==='a'?'b':'a']].name;
+      const opp = p.side === 'tie' ? 'both players' : (PLAYERS[m[p.side==='a'?'b':'a']]?.name || 'opponent');
       const right = m.resolved
         ? `<span class="net ${won?'pos':'neg'}" style="font-family:var(--mono);font-weight:700">${won?fmt(p.payout):'-'+p.stake}</span>`
-        : `${p.stake} pts @ ${p.multAtLock.toFixed(2)}x<br><b>-> ${Math.round(p.stake*p.multAtLock*streakBonus(L().user.streak))}</b>`;
+        : `${p.stake} pts @ ${p.multAtLock.toFixed(2)}x<br><b>-> ${Math.round(p.stake*p.multAtLock*streakBonus(l.user.streak))}</b>`;
       return `<div class="pickrow">
         <div><div class="pr-main"><span class="${p.side==='a'?'sideA':p.side==='b'?'sideB':'gold'}">${sideName(m, p.side)}</span> ${p.side==='tie'?'between':'over'} ${opp}</div>
         <div class="pr-sub">${m.statCategory}</div></div>
@@ -1874,7 +1906,29 @@ function renderPicks(){
     }).join('');
   }
   const h = $('#picksHist');
-  h.innerHTML = L().user.history.length ? L().user.history.slice().reverse().map(wk=>`
+  const settledSlates = (l.slates || []).filter(s=>s.status !== 'open' && (s.picks || []).length);
+  if(settledSlates.length){
+    h.innerHTML = settledSlates.map(s=>{
+      let net = 0, wins = 0, losses = 0;
+      const rows = (s.picks || []).map(p=>{
+        const m = (s.matchups || []).find(x=>x.id===p.matchupId);
+        if(!m) return '';
+        const won = p.side === m.winner;
+        const value = won ? Number(p.payout || 0) : -Number(p.stake || 0);
+        net += value;
+        if(won) wins++; else losses++;
+        const picked = sideName(m, p.side);
+        const winner = sideName(m, m.winner);
+        return `<div class="pickrow ${won?'won':'lost'}"><div><div class="pr-main"><span class="${won?'net pos':'net neg'}">${won?'WIN':'LOSS'}</span> ${esc(picked)} ${p.side==='tie'?'':'over the field'}</div>
+          <div class="pr-sub">${esc(m.statCategory)} - winner ${esc(winner)} - ${m.actualA ?? 0} to ${m.actualB ?? 0} ${esc(m.unit)}</div></div>
+          <div class="pr-num"><span class="net ${won?'pos':'neg'}" style="font-weight:700">${fmt(value)}</span></div></div>`;
+      }).join('');
+      return `<div class="week-block"><h4><span>${slateDayLabel(s)} - ${wins}W-${losses}L</span>
+        <span class="net ${signedClass(net)}" style="font-family:var(--mono)">${fmt(net)}</span></h4>${rows}</div>`;
+    }).join('');
+    return;
+  }
+  h.innerHTML = l.user.history.length ? l.user.history.slice().reverse().map(wk=>`
     <div class="week-block"><h4><span>${slateDayLabel(wk)} - ${wk.w}W-${wk.l}L</span>
       <span class="net ${wk.net>=0?'pos':'neg'}" style="font-family:var(--mono)">${fmt(wk.net)}</span></h4>
       ${wk.rows.map(r=>`<div class="pickrow"><div><div class="pr-main">${r.txt}</div><div class="pr-sub">${r.sub}</div></div>
