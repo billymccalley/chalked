@@ -121,6 +121,12 @@ a{color:var(--blue)}
 
 /* ---------- App shell ---------- */
 #app{max-width:1060px;margin:0 auto;padding:0 16px 96px}
+.site-footer{margin:30px 0 0;padding:18px 0 8px;border-top:1px solid rgba(139,159,184,.13);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;color:var(--faint);font-size:12px}
+.site-footer .version{font-family:var(--mono);letter-spacing:.04em;color:var(--faint)}
+.site-footer .links{display:flex;align-items:center;gap:13px;flex-wrap:wrap}
+.site-footer a{color:var(--muted);text-decoration:none;transition:color .15s}
+.site-footer a:hover{color:var(--gold)}
+#landing .site-footer{margin-top:30px}
 .topbar{position:sticky;top:0;z-index:40;background:rgba(11,15,20,.94);backdrop-filter:blur(10px);
   border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;
   margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);
@@ -538,6 +544,14 @@ table.board{width:100%;border-collapse:collapse;background:linear-gradient(180de
     <div class="ex"><div class="num">2</div><h3>Pick same-day MLB duels</h3><p>Slates use probable starters, confirmed lineups when available, live game locks, player photos, and recent-game stat logs.</p></div>
     <div class="ex"><div class="num">3</div><h3>Win against the room</h3><p>Your multiplier moves with the league market. Back the player, call the tie, or fade the popular side for a bigger payout.</p></div>
   </div>
+  <footer class="site-footer">
+    <span class="version">Chalked beta v0.1.0</span>
+    <span class="links">
+      <a href="/privacy.html" target="_blank" rel="noopener">Privacy</a>
+      <a href="/terms.html" target="_blank" rel="noopener">Terms</a>
+      <a href="mailto:support@playchalked.com">Support</a>
+    </span>
+  </footer>
 </div>
 
 <!-- ================= APP ================= -->
@@ -685,6 +699,15 @@ table.board{width:100%;border-collapse:collapse;background:linear-gradient(180de
       <div id="adminPanel"><div class="empty"><b>Loading admin tools</b>Checking system status.</div></div>
     </section>
   </main>
+  <footer class="site-footer">
+    <span class="version">Chalked beta v0.1.0</span>
+    <span class="links">
+      <a href="/privacy.html" target="_blank" rel="noopener">Privacy</a>
+      <a href="/terms.html" target="_blank" rel="noopener">Terms</a>
+      <a href="mailto:support@playchalked.com">Support</a>
+      <a href="#" onclick="go('profile');return false;">Report issue</a>
+    </span>
+  </footer>
 </div>
 
 <!-- onboarding -->
