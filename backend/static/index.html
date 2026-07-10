@@ -45,8 +45,8 @@ a{color:var(--blue)}
 /* ---------- Landing ---------- */
 #landing{max-width:1040px;margin:0 auto;padding:38px 20px 80px}
 .brand{font-family:var(--disp);font-weight:800;font-size:21px;letter-spacing:-.03em;display:flex;align-items:center;gap:10px}
-.brand-mark{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:#090E14;box-shadow:0 0 0 1px rgba(255,197,61,.18),0 8px 26px rgba(255,197,61,.16),0 0 38px rgba(255,197,61,.07);overflow:hidden;flex:0 0 auto}
-.brand-mark img{width:100%;height:100%;object-fit:cover;display:block}
+.brand-mark{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:radial-gradient(circle at 50% 48%,rgba(255,197,61,.13),rgba(255,197,61,0) 62%);box-shadow:0 0 0 1px rgba(255,197,61,.10),0 8px 26px rgba(255,197,61,.15),0 0 38px rgba(255,197,61,.08);overflow:visible;flex:0 0 auto}
+.brand-mark img{width:35px;height:35px;object-fit:contain;display:block;filter:drop-shadow(0 0 10px rgba(255,197,61,.20))}
 .brand-word{display:inline-flex;align-items:baseline}
 .brand i{font-style:normal;color:var(--gold)}
 .hero{margin:48px 0 20px;text-align:left;display:grid;grid-template-columns:minmax(0,1.04fr) minmax(320px,.86fr);gap:34px;align-items:center}
@@ -64,7 +64,7 @@ a{color:var(--blue)}
 .hero-link{font-family:var(--disp);font-weight:700;color:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 18px;background:rgba(20,27,36,.68)}
 .hero-link:hover{border-color:rgba(255,197,61,.34)}
 .demo-card{position:relative;overflow:hidden;margin:0;background:linear-gradient(180deg,#1B2430,#111821);border:1px solid rgba(255,197,61,.18);border-radius:18px;padding:16px;box-shadow:0 22px 70px rgba(0,0,0,.3)}
-.demo-card::before{content:"";position:absolute;right:-54px;top:-72px;width:230px;height:230px;background:url('/assets/chalked-logo-card.png') center/contain no-repeat;opacity:.11;filter:drop-shadow(0 0 24px rgba(255,197,61,.35));pointer-events:none}
+.demo-card::before{content:"";position:absolute;right:-46px;top:-62px;width:225px;height:225px;background:url('/assets/chalked-logo-mark.png') center/contain no-repeat;opacity:.13;filter:drop-shadow(0 0 26px rgba(255,197,61,.42));pointer-events:none}
 .demo-card>*{position:relative}
 .demo-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
 .demo-label{font-family:var(--mono);font-size:11px;color:var(--gold);letter-spacing:.08em;text-transform:uppercase}
@@ -478,7 +478,7 @@ table.board{width:100%;border-collapse:collapse;background:linear-gradient(180de
 
 <!-- ================= LANDING ================= -->
 <div id="landing">
-  <div class="brand"><span class="brand-mark"><img src="/assets/chalked-logo-card.png" alt=""></span><span class="brand-word">Chalked<i>.</i></span></div>
+  <div class="brand"><span class="brand-mark"><img src="/assets/chalked-logo-mark.png" alt=""></span><span class="brand-word">Chalked<i>.</i></span></div>
   <div class="hero">
     <div class="hero-copy">
       <div class="hero-kicker">Real MLB duels. Real league markets.</div>
@@ -518,7 +518,7 @@ table.board{width:100%;border-collapse:collapse;background:linear-gradient(180de
 <!-- ================= APP ================= -->
 <div id="app" class="hide">
   <header class="topbar">
-    <div class="brand"><span class="brand-mark"><img src="/assets/chalked-logo-card.png" alt=""></span><span class="brand-word">Chalked<i>.</i></span></div>
+    <div class="brand"><span class="brand-mark"><img src="/assets/chalked-logo-mark.png" alt=""></span><span class="brand-word">Chalked<i>.</i></span></div>
     <div class="top-right">
       <div class="league-pill" id="topLeague"><span class="crown hide" id="topLeagueCrown">OWN</span><span id="topLeagueName">League</span></div>
       <div class="streak-pill" id="streakPill" title="Current win streak">STK <span id="streakNum">0</span></div>
