@@ -840,6 +840,11 @@ const TEAMCOL = {
   PIT:'#FDB827', SD:'#2F241D', SEA:'#005C5C', SF:'#FD5A1E', STL:'#C41E3A', TB:'#092C5C',
   TEX:'#003278', TOR:'#134A8E', WSH:'#AB0003'
 };
+const TEAMACCENT = {
+  CWS:'#C4CED4', CHW:'#C4CED4', COL:'#C4CED4', KC:'#BD9B60', MIL:'#FFC52F', MIN:'#D31145',
+  NYY:'#C4CED4', OAK:'#EFB21E', ATH:'#EFB21E', SD:'#FFC425', SEA:'#6BE6E6', TB:'#8FBCE6',
+  TEX:'#C0111F', TOR:'#E8291C'
+};
 const PLAYERS = {
   skenes:{name:'Paul Skenes',team:'PIT',pos:'SP',grp:'K',mlb:694973}, skubal:{name:'Tarik Skubal',team:'DET',pos:'SP',grp:'K',mlb:669373},
   wheeler:{name:'Zack Wheeler',team:'PHI',pos:'SP',grp:'K',mlb:554430}, crochet:{name:'Garrett Crochet',team:'BOS',pos:'SP',grp:'K',mlb:676979},
@@ -1573,15 +1578,24 @@ function signedClass(value){
   const n = Number(value || 0);
   return n > 0 ? 'pos' : n < 0 ? 'neg' : 'zero';
 }
-function teamColor(team, fallback='#FFC53D'){
-  return TEAMCOL[String(team || '').toUpperCase()] || fallback;
-}
 function hexToRgb(hex){
   const clean = String(hex || '').replace('#','');
   const full = clean.length === 3 ? clean.split('').map(x=>x+x).join('') : clean;
   const n = parseInt(full, 16);
   if(Number.isNaN(n)) return [255,197,61];
   return [(n>>16)&255, (n>>8)&255, n&255];
+}
+function colorLuminance(hex){
+  const [r,g,b] = hexToRgb(hex).map(v=>{
+    const c = v / 255;
+    return c <= .03928 ? c / 12.92 : Math.pow((c + .055) / 1.055, 2.4);
+  });
+  return .2126*r + .7152*g + .0722*b;
+}
+function teamColor(team, fallback='#FFC53D'){
+  const code = String(team || '').toUpperCase();
+  const primary = TEAMCOL[code] || fallback;
+  return colorLuminance(primary) < .095 ? (TEAMACCENT[code] || fallback) : primary;
 }
 function alphaColor(hex, alpha){
   const [r,g,b] = hexToRgb(hex);
