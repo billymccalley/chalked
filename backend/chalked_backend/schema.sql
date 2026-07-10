@@ -271,5 +271,3 @@ CREATE INDEX IF NOT EXISTS idx_activity_league ON activity_events(league_id, cre
 CREATE INDEX IF NOT EXISTS idx_email_tokens_hash ON email_tokens(token_hash);
 CREATE INDEX IF NOT EXISTS idx_user_moderation_status ON user_moderation(status);
 CREATE INDEX IF NOT EXISTS idx_feedback_status ON feedback_reports(status, created_at);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code);
-CREATE INDEX IF NOT EXISTS idx_users_referred_by ON users(referred_by_id, referral_activated_at);
