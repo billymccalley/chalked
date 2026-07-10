@@ -11,10 +11,10 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 
 W, H = 1200, 630
 GOLD = "#FFC53D"
-BG = "#080D13"
-CARD = "#111923"
-PANEL = "#0D141D"
-LINE = "#28374A"
+BG = "#0B0F14"
+CARD = "#121A24"
+PANEL = "#0F151D"
+LINE = "#243040"
 TEXT = "#F6F8FB"
 MUTED = "#A7B4C6"
 FAINT = "#66758B"
@@ -61,10 +61,10 @@ TEAM_COLORS = {
 def render_matchup_card_png(share: dict[str, Any], static_root: Path) -> bytes:
     image = Image.new("RGBA", (W, H), BG)
     draw = ImageDraw.Draw(image)
-    fonts = FontBook()
+    fonts = FontBook(static_root)
 
     draw_soft_background(image)
-    draw.rounded_rectangle((42, 38, W - 42, H - 38), radius=30, fill=CARD, outline=(255, 197, 61, 118), width=2)
+    draw.rounded_rectangle((42, 38, W - 42, H - 38), radius=30, fill=CARD, outline=(255, 197, 61, 96), width=2)
     draw_header(image, draw, fonts, share, static_root)
 
     players = share["players"]
@@ -82,10 +82,10 @@ def render_matchup_card_png(share: dict[str, Any], static_root: Path) -> bytes:
 def draw_soft_background(image: Image.Image) -> None:
     layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
-    d.ellipse((780, -230, 1350, 300), fill=(255, 197, 61, 18))
-    d.ellipse((-260, 400, 370, 900), fill=(46, 217, 138, 13))
+    d.ellipse((800, -240, 1360, 280), fill=(255, 197, 61, 12))
+    d.ellipse((-260, 410, 360, 890), fill=(46, 217, 138, 10))
     d.ellipse((120, -260, 590, 180), fill=(74, 144, 226, 8))
-    d.rounded_rectangle((76, 74, W - 76, H - 74), radius=24, outline=(255, 255, 255, 10), width=1)
+    d.rounded_rectangle((76, 74, W - 76, H - 74), radius=24, outline=(255, 255, 255, 8), width=1)
     image.alpha_composite(layer.filter(ImageFilter.GaussianBlur(54)))
 
 
@@ -132,14 +132,14 @@ def draw_player(
     border = GOLD if selected or winner else LINE
 
     draw.rounded_rectangle(box, radius=22, fill=PANEL, outline=border, width=2 if selected or winner else 1)
-    draw.rounded_rectangle((x1, y1, x2, y1 + 7), radius=22, fill=color)
-    draw_headshot(image, draw, fonts, player, color, (x1 + 28, y1 + 34), 96)
+    draw.rounded_rectangle((x1, y1, x2, y1 + 5), radius=22, fill=color)
+    draw_headshot(image, draw, fonts, player, color, (x1 + 28, y1 + 38), 84)
 
-    name = clamp_text(draw, str(player.get("name") or "Player"), fonts.player, x2 - x1 - 160)
-    draw.text((x1 + 146, y1 + 38), name, font=fonts.player, fill=TEXT)
+    name = clamp_text(draw, str(player.get("name") or "Player"), fonts.player, x2 - x1 - 148)
+    draw.text((x1 + 130, y1 + 40), name, font=fonts.player, fill=TEXT)
     opp = f" vs {player.get('opponent')}" if player.get("opponent") else ""
     meta = f"{team} - {player.get('position') or ''}{opp}".strip()
-    draw.text((x1 + 146, y1 + 82), clamp_text(draw, meta, fonts.body, x2 - x1 - 170), font=fonts.body, fill=MUTED)
+    draw.text((x1 + 130, y1 + 80), clamp_text(draw, meta, fonts.body, x2 - x1 - 154), font=fonts.body, fill=MUTED)
 
     stat = value_for_side(share, side)
     draw.text((x1 + 30, y1 + 144), stat["label"], font=fonts.label, fill=FAINT)
@@ -242,7 +242,7 @@ def pick_status(share: dict[str, Any], pick: dict[str, Any]) -> str:
     if is_bad_beat(share, pick):
         return "BAD BEAT"
     if pick.get("status") != "settled":
-        return "LOCKED"
+        return "PENDING"
     return "BUSTED"
 
 
@@ -321,21 +321,29 @@ def text_width(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont) 
 
 
 class FontBook:
-    def __init__(self) -> None:
-        self.brand = load_font(38, bold=True)
-        self.player = load_font(30, bold=True)
-        self.big = load_font(48, bold=True)
-        self.initials = load_font(28, bold=True)
-        self.body = load_font(22)
-        self.body_b = load_font(23, bold=True)
-        self.label = load_font(18, bold=True)
-        self.pill = load_font(19, bold=True)
-        self.tie = load_font(24, bold=True)
-        self.odds = load_font(20, bold=True)
+    def __init__(self, static_root: Path) -> None:
+        font_dir = static_root / "assets" / "fonts"
+        self.brand = load_font(38, bold=True, font_dir=font_dir)
+        self.player = load_font(29, bold=True, font_dir=font_dir)
+        self.big = load_font(48, bold=True, font_dir=font_dir)
+        self.initials = load_font(26, bold=True, font_dir=font_dir)
+        self.body = load_font(22, font_dir=font_dir)
+        self.body_b = load_font(23, bold=True, font_dir=font_dir)
+        self.label = load_font(18, bold=True, font_dir=font_dir)
+        self.pill = load_font(19, bold=True, font_dir=font_dir)
+        self.tie = load_font(24, bold=True, font_dir=font_dir)
+        self.odds = load_font(20, bold=True, font_dir=font_dir)
 
 
-def load_font(size: int, bold: bool = False) -> ImageFont.ImageFont:
+def load_font(size: int, bold: bool = False, font_dir: Path | None = None) -> ImageFont.ImageFont:
+    local = []
+    if font_dir:
+        local = [
+            font_dir / ("Inter-Bold.ttf" if bold else "Inter-Regular.ttf"),
+            font_dir / ("Inter-Bold.otf" if bold else "Inter-Regular.otf"),
+        ]
     candidates = [
+        *[str(path) for path in local],
         "C:/Windows/Fonts/Inter-Bold.ttf" if bold else "C:/Windows/Fonts/Inter-Regular.ttf",
         "C:/Windows/Fonts/Inter.ttf",
         "/usr/share/fonts/truetype/inter/Inter-Bold.ttf" if bold else "/usr/share/fonts/truetype/inter/Inter-Regular.ttf",

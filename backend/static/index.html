@@ -438,14 +438,17 @@ a{color:var(--blue)}
 .section-h{font-family:var(--disp);font-weight:800;font-size:19px;letter-spacing:-.02em;margin:8px 0 12px}
 .pickrow{background:var(--panel);border:1px solid var(--line);border-radius:var(--rad-s);padding:12px 14px;display:flex;
   justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.pickrow.pending{border-color:var(--pick-line,rgba(255,197,61,.32));background:linear-gradient(90deg,var(--pick-bg,rgba(255,197,61,.07)),var(--panel) 52%)}
 .pickrow.won{border-color:rgba(46,217,138,.34);background:linear-gradient(90deg,rgba(46,217,138,.075),var(--panel) 46%)}
 .pickrow.lost{border-color:rgba(255,107,107,.34);background:linear-gradient(90deg,rgba(255,107,107,.07),var(--panel) 46%)}
 .pickrow .pr-main{font-weight:600}
+.pickrow.pending .picked{color:var(--pick-color,var(--gold))}
 .pickrow .pr-main .sideA{color:var(--red)} .pickrow .pr-main .sideB{color:var(--blue)}
 .pickrow .pr-sub{font-size:12px;color:var(--muted)}
 .pickrow .pr-num{font-family:var(--mono);font-size:13px;text-align:right}
 .pickrow .pr-num b{color:var(--green)}
 .pick-result{display:inline-flex;align-items:center;margin-right:7px;padding:3px 7px;border-radius:999px;font-family:var(--disp);font-size:11px;font-weight:900;letter-spacing:.08em}
+.pick-result.pending{color:var(--pick-color,var(--gold));background:var(--pick-bg,rgba(255,197,61,.1));border:1px solid var(--pick-line,rgba(255,197,61,.36))}
 .pick-result.win{color:var(--green);background:rgba(46,217,138,.1);border:1px solid rgba(46,217,138,.36)}
 .pick-result.loss{color:var(--loss);background:rgba(255,107,107,.09);border:1px solid rgba(255,107,107,.36)}
 .week-block{margin-bottom:22px}
@@ -1638,6 +1641,12 @@ function pickMatchupText(m, side){
   const opponent = side === 'a' ? b : a;
   return `${sideName(m, side)} over ${opponent}`;
 }
+function pickAccentStyle(m, side){
+  if(side === 'tie') return `--pick-color:var(--gold);--pick-bg:rgba(255,197,61,.09);--pick-line:rgba(255,197,61,.38)`;
+  const player = PLAYERS[m?.[side]];
+  const color = teamColor(player?.team, side === 'a' ? '#FF6B6B' : '#4A90E2');
+  return `--pick-color:${color};--pick-bg:${alphaColor(color,.10)};--pick-line:${alphaColor(color,.42)}`;
+}
 function sideColor(side){
   return side === 'a' ? 'var(--side-a,var(--red))' : side === 'b' ? 'var(--side-b,var(--blue))' : 'var(--gold)';
 }
@@ -2093,11 +2102,13 @@ function renderPicks(){
       const m = l.matchups.find(x=>x.id===p.matchupId);
       if(!m) return '';
       const won = m.resolved ? p.side===m.winner : null;
+      const state = m.resolved ? (won ? 'won' : 'lost') : 'pending';
+      const badge = m.resolved ? (won ? 'WIN' : 'LOSS') : 'PENDING';
       const right = m.resolved
         ? `<span class="net ${won?'pos':'neg'}" style="font-family:var(--mono);font-weight:700">${won?fmt(p.payout):'-'+p.stake}</span>`
         : `${p.stake} pts @ ${p.multAtLock.toFixed(2)}x<br><b>-> ${Math.round(p.stake*p.multAtLock*streakBonus(l.user.streak))}</b>`;
-      return `<div class="pickrow">
-        <div><div class="pr-main"><span class="${p.side==='a'?'sideA':p.side==='b'?'sideB':'gold'}">${esc(pickMatchupText(m, p.side))}</span></div>
+      return `<div class="pickrow ${state}" style="${pickAccentStyle(m, p.side)}">
+        <div><div class="pr-main"><span class="pick-result ${state === 'pending' ? 'pending' : won ? 'win' : 'loss'}">${badge}</span><span class="picked">${esc(pickMatchupText(m, p.side))}</span></div>
         <div class="pr-sub">${m.statCategory}</div></div>
         <div class="pr-num">${right}</div></div>`;
     }).join('');
