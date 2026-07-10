@@ -323,34 +323,37 @@ def text_width(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont) 
 class FontBook:
     def __init__(self, static_root: Path) -> None:
         font_dir = static_root / "assets" / "fonts"
-        self.brand = load_font(38, bold=True, font_dir=font_dir)
+        self.brand = load_font(38, black=True, font_dir=font_dir)
         self.player = load_font(29, bold=True, font_dir=font_dir)
-        self.big = load_font(48, bold=True, font_dir=font_dir)
+        self.big = load_font(48, black=True, font_dir=font_dir)
         self.initials = load_font(26, bold=True, font_dir=font_dir)
         self.body = load_font(22, font_dir=font_dir)
         self.body_b = load_font(23, bold=True, font_dir=font_dir)
         self.label = load_font(18, bold=True, font_dir=font_dir)
         self.pill = load_font(19, bold=True, font_dir=font_dir)
-        self.tie = load_font(24, bold=True, font_dir=font_dir)
+        self.tie = load_font(24, black=True, font_dir=font_dir)
         self.odds = load_font(20, bold=True, font_dir=font_dir)
 
 
-def load_font(size: int, bold: bool = False, font_dir: Path | None = None) -> ImageFont.ImageFont:
+def load_font(size: int, bold: bool = False, black: bool = False, font_dir: Path | None = None) -> ImageFont.ImageFont:
     local = []
     if font_dir:
+        weight = "Black" if black else "Bold" if bold else "Regular"
         local = [
-            font_dir / ("Inter-Bold.ttf" if bold else "Inter-Regular.ttf"),
-            font_dir / ("Inter-Bold.otf" if bold else "Inter-Regular.otf"),
+            font_dir / f"Inter-{weight}.ttf",
+            font_dir / f"Inter-{weight}.otf",
+            font_dir / ("Inter-Bold.ttf" if bold or black else "Inter-Regular.ttf"),
         ]
+    win_weight = "Black" if black else "Bold" if bold else "Regular"
     candidates = [
         *[str(path) for path in local],
-        "C:/Windows/Fonts/Inter-Bold.ttf" if bold else "C:/Windows/Fonts/Inter-Regular.ttf",
+        f"C:/Windows/Fonts/Inter-{win_weight}.ttf",
         "C:/Windows/Fonts/Inter.ttf",
-        "/usr/share/fonts/truetype/inter/Inter-Bold.ttf" if bold else "/usr/share/fonts/truetype/inter/Inter-Regular.ttf",
-        "/usr/share/fonts/opentype/inter/Inter-Bold.otf" if bold else "/usr/share/fonts/opentype/inter/Inter-Regular.otf",
-        "/usr/local/share/fonts/Inter-Bold.ttf" if bold else "/usr/local/share/fonts/Inter-Regular.ttf",
-        "C:/Windows/Fonts/arialbd.ttf" if bold else "C:/Windows/Fonts/arial.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        f"/usr/share/fonts/truetype/inter/Inter-{win_weight}.ttf",
+        f"/usr/share/fonts/opentype/inter/Inter-{win_weight}.otf",
+        f"/usr/local/share/fonts/Inter-{win_weight}.ttf",
+        "C:/Windows/Fonts/arialbd.ttf" if bold or black else "C:/Windows/Fonts/arial.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold or black else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     ]
     for path in candidates:
         try:
