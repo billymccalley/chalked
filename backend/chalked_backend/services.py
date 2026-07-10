@@ -1888,8 +1888,8 @@ def public_matchup_share(conn: sqlite3.Connection, matchup_id: str, pick_id: str
         """
         SELECT m.*, s.week, s.game_date, s.status slate_status,
                l.id league_id, l.name league_name, l.min_mult, l.max_mult,
-               pa.name player_a_name, pa.team player_a_team, pa.position player_a_position,
-               pb.name player_b_name, pb.team player_b_team, pb.position player_b_position
+               pa.name player_a_name, pa.team player_a_team, pa.position player_a_position, pa.external_id player_a_external_id,
+               pb.name player_b_name, pb.team player_b_team, pb.position player_b_position, pb.external_id player_b_external_id
         FROM matchups m
         JOIN slates s ON s.id = m.slate_id
         JOIN leagues l ON l.id = s.league_id
@@ -1982,8 +1982,20 @@ def public_matchup_share(conn: sqlite3.Connection, matchup_id: str, pick_id: str
         "pick": pick,
         "cache_key": cache_key,
         "players": {
-            "a": {"name": row["player_a_name"], "team": row["player_a_team"], "position": row["player_a_position"], "opponent": row["opponent_a"]},
-            "b": {"name": row["player_b_name"], "team": row["player_b_team"], "position": row["player_b_position"], "opponent": row["opponent_b"]},
+            "a": {
+                "name": row["player_a_name"],
+                "team": row["player_a_team"],
+                "position": row["player_a_position"],
+                "opponent": row["opponent_a"],
+                "external_id": row["player_a_external_id"],
+            },
+            "b": {
+                "name": row["player_b_name"],
+                "team": row["player_b_team"],
+                "position": row["player_b_position"],
+                "opponent": row["opponent_b"],
+                "external_id": row["player_b_external_id"],
+            },
         },
     }
 
