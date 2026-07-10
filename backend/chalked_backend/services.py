@@ -70,6 +70,8 @@ def public_user(row: sqlite3.Row | dict) -> dict[str, Any]:
         "email": row["email"],
         "display_name": row["display_name"] or row["handle"],
         "avatar_url": row["avatar_url"],
+        "referral_code": row["referral_code"] if "referral_code" in row.keys() else None,
+        "cosmetic_accent": row["cosmetic_accent"] if "cosmetic_accent" in row.keys() else None,
         "email_verified_at": row["email_verified_at"] if "email_verified_at" in row.keys() else None,
         "last_handle_change_at": row["last_handle_change_at"] if "last_handle_change_at" in row.keys() else None,
         "terms_accepted_at": row["terms_accepted_at"] if "terms_accepted_at" in row.keys() else None,
@@ -89,6 +91,110 @@ def clean_handle(value: object) -> str:
     if not HANDLE_RE.fullmatch(handle):
         raise ApiError(400, "Username must be 3-20 characters and can only use letters, numbers, dots, underscores, or hyphens")
     return handle
+
+
+def clean_referral_code(value: object) -> str:
+    return re.sub(r"[^A-Za-z0-9]", "", str(value or "").strip()).upper()[:24]
+
+
+def generate_referral_code(conn: sqlite3.Connection, handle: str) -> str:
+    base = re.sub(r"[^A-Za-z0-9]", "", handle.upper())[:8] or "CHALK"
+    for _ in range(12):
+        code = f"{base}-{make_code()[:4]}"
+        if not conn.execute("SELECT 1 FROM users WHERE referral_code = ?", (code,)).fetchone():
+            return code
+    while True:
+        code = f"CHALK-{make_code()}"
+        if not conn.execute("SELECT 1 FROM users WHERE referral_code = ?", (code,)).fetchone():
+            return code
+
+
+def ensure_referral_code(conn: sqlite3.Connection, user_id: str) -> str:
+    row = conn.execute("SELECT handle, referral_code FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not row:
+        raise ApiError(404, "User not found")
+    if row["referral_code"]:
+        return row["referral_code"]
+    code = generate_referral_code(conn, row["handle"])
+    conn.execute("UPDATE users SET referral_code = ? WHERE id = ?", (code, user_id))
+    return code
+
+
+def referral_rewards(count: int) -> dict[str, Any]:
+    badges = {}
+    if count >= 1:
+        badges["founder_scout"] = True
+    if count >= 3:
+        badges["clubhouse_builder"] = True
+    if count >= 5:
+        badges["commissioner"] = True
+    if count >= 10:
+        badges["chalked_og"] = True
+    return {
+        "badges": badges,
+        "cosmetics": {
+            "gold_profile_accent": count >= 1,
+            "builder_name_glow": count >= 3,
+            "og_share_flair": count >= 10,
+        },
+    }
+
+
+def maybe_activate_referral(conn: sqlite3.Connection, user_id: str) -> None:
+    row = conn.execute("SELECT referred_by_id, referral_activated_at, email, email_verified_at FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not row or not row["referred_by_id"] or row["referral_activated_at"]:
+        return
+    if row["email"] and not row["email_verified_at"]:
+        return
+    slate_count = conn.execute(
+        "SELECT COUNT(DISTINCT slate_id) c FROM picks WHERE user_id = ?",
+        (user_id,),
+    ).fetchone()["c"]
+    if slate_count < 2:
+        return
+    conn.execute("UPDATE users SET referral_activated_at = ? WHERE id = ?", (now_iso(), user_id))
+    activated = conn.execute(
+        "SELECT COUNT(*) c FROM users WHERE referred_by_id = ? AND referral_activated_at IS NOT NULL",
+        (row["referred_by_id"],),
+    ).fetchone()["c"]
+    if activated >= 1:
+        conn.execute("UPDATE users SET cosmetic_accent = COALESCE(cosmetic_accent, 'gold') WHERE id = ?", (row["referred_by_id"],))
+
+
+def referral_summary(conn: sqlite3.Connection, user_id: str) -> dict[str, Any]:
+    code = ensure_referral_code(conn, user_id)
+    activated = conn.execute(
+        "SELECT COUNT(*) c FROM users WHERE referred_by_id = ? AND referral_activated_at IS NOT NULL",
+        (user_id,),
+    ).fetchone()["c"]
+    pending = conn.execute(
+        "SELECT COUNT(*) c FROM users WHERE referred_by_id = ? AND referral_activated_at IS NULL",
+        (user_id,),
+    ).fetchone()["c"]
+    invited_by = conn.execute(
+        """
+        SELECT inviter.handle, inviter.display_name, invited.referral_activated_at
+        FROM users invited
+        JOIN users inviter ON inviter.id = invited.referred_by_id
+        WHERE invited.id = ?
+        """,
+        (user_id,),
+    ).fetchone()
+    rewards = referral_rewards(int(activated or 0))
+    return {
+        "code": code,
+        "url": f"{public_url()}/?ref={code}",
+        "activated_count": int(activated or 0),
+        "pending_count": int(pending or 0),
+        "next_unlock": "3 activated invites unlock Builder glow" if activated < 3 else "5 activated invites unlock Commissioner" if activated < 5 else "10 activated invites unlock OG flair" if activated < 10 else "All current invite rewards unlocked",
+        "badges": rewards["badges"],
+        "cosmetics": rewards["cosmetics"],
+        "invited_by": {
+            "handle": invited_by["handle"],
+            "display_name": invited_by["display_name"] or invited_by["handle"],
+            "activated_at": invited_by["referral_activated_at"],
+        } if invited_by else None,
+    }
 
 
 def demo_seed_enabled() -> bool:
@@ -213,12 +319,21 @@ def create_user(conn: sqlite3.Connection, data: dict, bot: bool = False) -> dict
         if bot:
             return row_to_dict(conn.execute("SELECT * FROM users WHERE lower(handle) = ?", (handle.lower(),)).fetchone())
         raise ApiError(409, "Username or email is already taken")
+    referral_code = generate_referral_code(conn, handle)
+    referrer_id = None
+    entered_referral = clean_referral_code(data.get("referral_code") or data.get("ref"))
+    if entered_referral:
+        referrer = conn.execute("SELECT id FROM users WHERE replace(upper(referral_code), '-', '') = ?", (entered_referral.replace("-", ""),)).fetchone()
+        if not referrer:
+            raise ApiError(400, "Referral code not found")
+        referrer_id = referrer["id"]
     try:
         conn.execute(
             """
             INSERT INTO users (
-              id, handle, email, display_name, avatar_url, terms_accepted_at, privacy_accepted_at, password_hash, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+              id, handle, email, display_name, avatar_url, referral_code, referred_by_id,
+              terms_accepted_at, privacy_accepted_at, password_hash, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 user_id,
@@ -226,6 +341,8 @@ def create_user(conn: sqlite3.Connection, data: dict, bot: bool = False) -> dict
                 email,
                 data.get("display_name") or handle,
                 data.get("avatar_url"),
+                referral_code,
+                referrer_id,
                 accepted_at,
                 accepted_at,
                 hash_password(data["password"]),
@@ -323,6 +440,7 @@ def logout_other_sessions(conn: sqlite3.Connection, user_id: str, current_sessio
 
 
 def profile(conn: sqlite3.Connection, user_id: str) -> dict:
+    ensure_referral_code(conn, user_id)
     user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     aliases = conn.execute(
         """
@@ -336,6 +454,7 @@ def profile(conn: sqlite3.Connection, user_id: str) -> dict:
     ).fetchall()
     return {
         "user": public_user(user),
+        "referrals": referral_summary(conn, user_id),
         "league_profiles": [
             {
                 "league_id": r["league_id"],
@@ -410,6 +529,7 @@ def confirm_email_verification(conn: sqlite3.Connection, token: str) -> dict:
         (now_iso(), row["user_id"], str(row["email"] or "").lower()),
     )
     conn.execute("UPDATE email_tokens SET used_at = ? WHERE id = ?", (now_iso(), row["id"]))
+    maybe_activate_referral(conn, row["user_id"])
     user = conn.execute("SELECT * FROM users WHERE id = ?", (row["user_id"],)).fetchone()
     return {"ok": True, "user": public_user(user)}
 
@@ -2405,6 +2525,7 @@ def create_pick(conn: sqlite3.Connection, user_id: str, league_id: str, data: di
             "stat_key": matchup["stat_key"],
         },
     )
+    maybe_activate_referral(conn, user_id)
     return row_to_dict(conn.execute("SELECT * FROM picks WHERE id = ?", (pick_id,)).fetchone())
 
 

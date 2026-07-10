@@ -31,8 +31,10 @@ from backend.chalked_backend.services import (
     leaderboard,
     list_leagues,
     login,
+    maybe_activate_referral,
     matchup_chat,
     player_stat_value,
+    profile,
     public_matchup_share,
     request_email_verification,
     request_password_reset,
@@ -315,6 +317,48 @@ class ServiceTests(unittest.TestCase):
             with self.assertRaises(ApiError) as invalid_update:
                 update_profile(conn, existing["id"], {"handle": "bad name"})
             self.assertEqual(invalid_update.exception.status, 400)
+
+    def test_referral_rewards_activate_after_verified_two_slate_picks(self):
+        with transaction(self.db_path) as conn:
+            ensure_seeded(conn)
+            inviter = create_user(conn, {"handle": "inviteboss", "email": "boss@example.com", "password": "secret123"})
+            invite_code = profile(conn, inviter["id"])["referrals"]["code"]
+            invited = create_user(conn, {
+                "handle": "invitedone",
+                "email": "invited@example.com",
+                "password": "secret123",
+                "referral_code": invite_code,
+            })
+            league = create_league(conn, inviter["id"], {"name": "Invite League", "code": "INVITE1"})
+            join_league(conn, invited["id"], league["id"])
+            slate = ensure_active_slate(conn, league["id"])
+            self.assertGreaterEqual(len(slate["matchups"]), 2)
+
+            create_pick(conn, invited["id"], league["id"], {"matchup_id": slate["matchups"][0]["id"], "side": "a", "stake": 25})
+            pending = profile(conn, inviter["id"])["referrals"]
+            self.assertEqual(pending["pending_count"], 1)
+            self.assertEqual(pending["activated_count"], 0)
+
+            stamp = services.now_iso()
+            conn.execute("UPDATE users SET email_verified_at = ? WHERE id = ?", (stamp, invited["id"]))
+            conn.execute(
+                "INSERT INTO slates (id, league_id, week, status, game_date, locks_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                ("s_referral_second", league["id"], 99, "open", "2026-07-11", stamp, stamp),
+            )
+            conn.execute(
+                """
+                INSERT INTO picks (id, user_id, league_id, slate_id, matchup_id, side, stake, mult_at_lock, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                ("p_referral_second", invited["id"], league["id"], "s_referral_second", slate["matchups"][1]["id"], "b", 25, 2.0, stamp),
+            )
+            maybe_activate_referral(conn, invited["id"])
+
+            rewarded = profile(conn, inviter["id"])
+            self.assertEqual(rewarded["referrals"]["activated_count"], 1)
+            self.assertTrue(rewarded["referrals"]["badges"]["founder_scout"])
+            self.assertEqual(rewarded["user"]["cosmetic_accent"], "gold")
+            self.assertEqual(profile(conn, invited["id"])["referrals"]["invited_by"]["handle"], "inviteboss")
 
     def test_user_terms_acceptance_is_recorded(self):
         with transaction(self.db_path) as conn:

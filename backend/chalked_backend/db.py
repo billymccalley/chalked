@@ -47,6 +47,10 @@ def migrate(conn: sqlite3.Connection) -> None:
             ("email_verified_at", "TEXT"),
             ("display_name", "TEXT"),
             ("avatar_url", "TEXT"),
+            ("referral_code", "TEXT"),
+            ("referred_by_id", "TEXT"),
+            ("referral_activated_at", "TEXT"),
+            ("cosmetic_accent", "TEXT"),
             ("last_handle_change_at", "TEXT"),
             ("terms_accepted_at", "TEXT"),
             ("privacy_accepted_at", "TEXT"),
@@ -246,6 +250,8 @@ def migrate(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_email_tokens_hash ON email_tokens(token_hash)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_user_moderation_status ON user_moderation(status)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_feedback_status ON feedback_reports(status, created_at)")
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_users_referred_by ON users(referred_by_id, referral_activated_at)")
 
 
 @contextmanager
