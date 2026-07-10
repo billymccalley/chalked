@@ -26,6 +26,7 @@ from backend.chalked_backend.services import (
     join_league,
     leave_league,
     leaderboard,
+    list_leagues,
     login,
     matchup_chat,
     player_stat_value,
@@ -76,6 +77,53 @@ class ServiceTests(unittest.TestCase):
             self.assertEqual(board_b["league"]["name"], "B League")
             self.assertEqual(board_a["rows"][0]["season"], 250)
             self.assertEqual(board_b["rows"][0]["season"], -90)
+
+    def test_chalked_league_replaces_seeded_clubhouse_as_default(self):
+        with transaction(self.db_path) as conn:
+            owner = create_user(conn, {"handle": "chalkowner", "password": "secret123"})
+            demo = create_user(conn, {"handle": "demo", "email": "demo@chalked.local", "password": "demo12345"})
+            existing_id = "lg_existing_chalked"
+            clubhouse_id = "lg_old_clubhouse"
+            stamp = services.now_iso()
+            conn.execute(
+                """
+                INSERT INTO leagues (id, code, name, description, owner_id, visibility, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (existing_id, "PLAYER1", "Chalked", "Player-made Chalked league.", owner["id"], "private", stamp),
+            )
+            conn.execute(
+                """
+                INSERT INTO leagues (id, code, name, description, owner_id, visibility, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (clubhouse_id, "HOME", "The Clubhouse", "Old seeded room.", demo["id"], "open", stamp),
+            )
+
+            ensure_seeded(conn)
+
+            default = conn.execute("SELECT * FROM leagues WHERE id = ?", (existing_id,)).fetchone()
+            self.assertEqual(default["code"], "CHALK")
+            self.assertEqual(default["name"], "Chalked")
+            self.assertEqual(default["visibility"], "open")
+            self.assertIsNone(conn.execute("SELECT 1 FROM leagues WHERE id = ?", (clubhouse_id,)).fetchone())
+
+    def test_private_leagues_join_by_code_and_open_list_hides_codes(self):
+        with transaction(self.db_path) as conn:
+            ensure_seeded(conn)
+            owner = create_user(conn, {"handle": "privacyowner", "password": "secret123"})
+            guest = create_user(conn, {"handle": "privacyguest", "password": "secret123"})
+            private = create_league(conn, owner["id"], {"name": "Invite Room", "code": "SECRET", "visibility": "private"})
+            open_league = create_league(conn, owner["id"], {"name": "Open Room", "code": "PUBLIC", "visibility": "open"})
+
+            listed = list_leagues(conn, guest["id"])
+            self.assertNotIn(private["id"], [league["id"] for league in listed["open"]])
+            public_row = next(league for league in listed["open"] if league["id"] == open_league["id"])
+            self.assertIsNone(public_row["code"])
+
+            joined = join_league(conn, guest["id"], "SECRET")
+            self.assertEqual(joined["id"], private["id"])
+            self.assertEqual(joined["code"], "SECRET")
 
     def test_only_owner_can_update_settings(self):
         with transaction(self.db_path) as conn:

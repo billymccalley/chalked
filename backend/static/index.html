@@ -594,6 +594,7 @@ table.board{width:100%;border-collapse:collapse;background:linear-gradient(180de
             <div class="form-field"><label>Season weeks</label><input id="newSeasonWeeks" type="number" min="1" max="26" value="10"></div>
             <div class="form-field"><label>Playoff size</label><select id="newPlayoffSize"><option>4</option><option>6</option><option selected>8</option><option>10</option><option>12</option><option>14</option><option>16</option></select></div>
           </div>
+          <label class="toggle-row"><span>Private code-only league</span><input id="newLeaguePrivate" type="checkbox" checked></label>
           <label class="toggle-row"><span>Enable playoffs</span><input id="newPlayoffsEnabled" type="checkbox" checked></label>
           <button class="btn" style="width:100%;margin-top:10px" onclick="createLeague()">Create owned league</button>
         </div>
@@ -956,6 +957,7 @@ function makeLeague(opts={}){
     code: (opts.code || Math.random().toString(36).slice(2,8)).toUpperCase(),
     name: opts.name || 'My Chalked League',
     desc: opts.desc || 'A private weekly sweat with custom market rules.',
+    visibility: opts.visibility || 'open',
     ownerId: opts.ownerId || 'me',
     ownerName: opts.ownerName || (opts.ownerId === 'me' ? 'You' : 'League Owner'),
     memberCount: opts.memberCount || Math.floor(rnd(8,42)),
@@ -970,7 +972,7 @@ function makeLeague(opts={}){
 }
 
 function seed(){
-  const home = makeLeague({id:'home', code:'HOME', name:'The Clubhouse', desc:'The default Chalked room: balanced multipliers, weekly bankroll resets, and ten duels.'});
+  const home = makeLeague({id:'home', code:'CHALK', name:'Chalked', desc:'The main public Chalked league: balanced multipliers, weekly bankroll resets, and daily duels.'});
   S = {activeLeagueId:home.id, leagues:[home], joinedOpen:{}, onboarded:false};
   DB.save(S);
 }
@@ -1019,7 +1021,7 @@ function migrateState(raw){
   }
   const settings = {...DEFAULT_SETTINGS, bankroll:raw.user?.bankTotal || 1000};
   const league = makeLeague({
-    id:'home', code:'HOME', name:'The Clubhouse', desc:'Your original Chalked demo, upgraded into a league.',
+    id:'home', code:'CHALK', name:'Chalked', desc:'The main public Chalked league, upgraded with real slates and league markets.',
     settings, week:raw.week, phase:raw.phase, lockTime:raw.lockTime, matchups:raw.matchups,
     fakePicks:raw.fakePicks, picks:raw.picks, user:raw.user, fakes:raw.fakes,
   });
@@ -1060,7 +1062,8 @@ function avatarHTML(pid, side){
 }
 
 function leagueChips(l){
-  return `<span class="league-chip"><b>${l.code}</b> code</span>
+  const code = l.code ? `<span class="league-chip"><b>${esc(l.code)}</b> code</span>` : `<span class="league-chip"><b>OPEN</b> public</span>`;
+  return `${code}
     <span class="league-chip"><b>${l.memberCount}</b> managers</span>
     <span class="league-chip"><b>${l.settings.minStake}-${l.settings.maxStake}</b> stake</span>
     <span class="league-chip"><b>${l.settings.minMult.toFixed(1)}-${l.settings.maxMult.toFixed(1)}x</b> mult</span>
@@ -1159,11 +1162,11 @@ function leagueCard(l, joined){
       <div><h3>${esc(l.name)} ${owner?'<span class="owner-crown" title="You own this league"><span class="emoji">&#128081;</span> OWN</span>':''}</h3>
       <p>${esc(l.desc)}</p></div>
     </div>
-    <div class="league-meta">${leagueChips(l)}</div>
+    <div class="league-meta">${leagueChips(joined ? l : {...l, code:null})}</div>
     <div class="actions">
       ${joined ? `<button class="btn ${active?'gold':''}" onclick="switchLeague('${l.id}')">${active?'Active':'Switch'}</button>`
         : `<button class="btn gold" onclick="joinOpenLeague('${l.code}')">Join</button>`}
-      <button class="btn ghost" onclick="copyLeagueCode('${l.code}')">Invite</button>
+      ${joined && l.code ? `<button class="btn ghost" onclick="copyLeagueCode('${l.code}')">Invite</button>` : ''}
       ${joined && !owner ? `<button class="btn danger" onclick="askLeaveLeague('${l.id}')">Leave</button>` : ''}
     </div>
   </div>`;
@@ -1379,7 +1382,7 @@ async function confirmRefreshSlate(){
 }
 function createLeague(){
   const n = S.leagues.filter(l=>l.ownerId==='me').length + 1;
-  const l = makeLeague({name:`My League ${n}`, code:`OWN${n}${Math.floor(rnd(10,99))}`, memberCount:1});
+  const l = makeLeague({name:`My League ${n}`, code:`OWN${n}${Math.floor(rnd(10,99))}`, visibility:$('#newLeaguePrivate')?.checked ? 'private' : 'open', memberCount:1});
   S.leagues.push(l);
   S.activeLeagueId = l.id;
   DB.save(S);
@@ -2381,6 +2384,7 @@ function snakeSetting(key){
 function mapLeague(l){
   return {
     id:l.id, code:l.code, name:l.name, desc:l.description, ownerId:l.owner_id, avatarUrl:l.avatar_url,
+    visibility:l.visibility || 'open',
     ownerName:l.role === 'owner' ? 'You' : 'League Owner',
     memberCount:l.member_count, settings:camelSettings(l.settings), playoffs:l.playoffs,
     myProfile:l.my_profile || {},
@@ -2670,11 +2674,11 @@ leagueCard = function(l, joined){
       <div><h3>${esc(l.name)} ${owner?'<span class="owner-crown" title="You own this league"><span class="emoji">&#128081;</span> OWN</span>':''}</h3>
       <p>${esc(l.desc)}</p></div>
     </div>
-    <div class="league-meta">${leagueChips(l)}</div>
+    <div class="league-meta">${leagueChips(joined ? l : {...l, code:null})}</div>
     <div class="actions">
       ${joined ? `<button class="btn ${active?'gold':''}" onclick="switchLeague('${l.id}')">${active?'Active':'Switch'}</button>`
         : `<button class="btn gold" onclick="joinOpenLeague('${l.id}')">Join</button>`}
-      <button class="btn ghost" onclick="copyLeagueCode('${l.code}')">Invite</button>
+      ${joined && l.code ? `<button class="btn ghost" onclick="copyLeagueCode('${l.code}')">Invite</button>` : ''}
       ${joined && !owner ? `<button class="btn danger" onclick="askLeaveLeague('${l.id}')">Leave</button>` : ''}
     </div>
   </div>`;
@@ -2758,6 +2762,7 @@ createLeague = async function(){
     const body = {
       name: ($('#newLeagueName')?.value || `My League ${n}`).trim(),
       description:'A real backend-powered Chalked league.',
+      visibility: $('#newLeaguePrivate')?.checked ? 'private' : 'open',
       avatar_url: ($('#newLeagueAvatar')?.value || '').trim() || null,
       season_weeks: parseInt($('#newSeasonWeeks')?.value || '10', 10),
       playoff_enabled: $('#newPlayoffsEnabled')?.checked ? 1 : 0,

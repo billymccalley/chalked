@@ -118,9 +118,12 @@ def ensure_seeded(conn: sqlite3.Connection, sync_players: bool = False) -> None:
     static_players = list(StaticPlayerProvider().players())
     player_count = conn.execute("SELECT COUNT(*) c FROM players WHERE active = 1").fetchone()["c"]
     demo_exists = conn.execute("SELECT 1 FROM users WHERE handle = ? OR email = ?", ("demo", "demo@chalked.local")).fetchone()
+    default_league = conn.execute("SELECT code, name FROM leagues WHERE code = ? OR lower(name) = ?", ("CHALK", "chalked")).fetchone()
+    old_clubhouse = conn.execute("SELECT 1 FROM leagues WHERE code IN (?, ?) OR lower(name) = ?", ("HOME", "RJRXI1M", "the clubhouse")).fetchone()
+    default_league_ready = bool(default_league and default_league["code"] == "CHALK" and default_league["name"] == "Chalked" and not old_clubhouse)
     bot_placeholders = ",".join("?" for _ in BOT_HANDLES)
     bot_count = conn.execute(f"SELECT COUNT(*) c FROM users WHERE handle IN ({bot_placeholders})", BOT_HANDLES).fetchone()["c"]
-    if not sync_players and player_count >= len(static_players) and demo_exists and (not demo_seed_enabled() or bot_count == len(BOT_HANDLES)):
+    if not sync_players and player_count >= len(static_players) and demo_exists and default_league_ready and (not demo_seed_enabled() or bot_count == len(BOT_HANDLES)):
         return
 
     if sync_players or player_count < len(static_players):
@@ -153,13 +156,37 @@ def ensure_seeded(conn: sqlite3.Connection, sync_players: bool = False) -> None:
     demo_user = conn.execute("SELECT * FROM users WHERE handle = ? OR email = ?", ("demo", "demo@chalked.local")).fetchone()
     if not demo_user:
         demo_user = create_user(conn, {"handle": "demo", "email": "demo@chalked.local", "password": "demo12345"})
-    if not conn.execute("SELECT 1 FROM leagues WHERE code = ?", ("HOME",)).fetchone():
+    default_description = "The main public Chalked league."
+    target_league = conn.execute(
+        """
+        SELECT * FROM leagues
+        WHERE code = ? OR lower(name) = ?
+        ORDER BY code = ? DESC, created_at
+        LIMIT 1
+        """,
+        ("CHALK", "chalked", "CHALK"),
+    ).fetchone()
+    if target_league:
+        conn.execute(
+            "UPDATE leagues SET code = ?, name = ?, description = ?, visibility = 'open' WHERE id = ?",
+            ("CHALK", "Chalked", default_description, target_league["id"]),
+        )
+        league_id = target_league["id"]
+    else:
         user = row_to_dict(demo_user)
-        league = create_league(conn, user["id"], {"name": "The Clubhouse", "description": "Default public Chalked league.", "code": "HOME"})
-        if demo_seed_enabled():
-            for bot in conn.execute("SELECT id FROM users WHERE email LIKE '%@bots.chalked.local'").fetchall():
-                join_league(conn, bot["id"], league["id"])
-        ensure_active_slate(conn, league["id"])
+        league = create_league(conn, user["id"], {"name": "Chalked", "description": default_description, "code": "CHALK", "visibility": "open"})
+        league_id = league["id"]
+    conn.execute(
+        """
+        DELETE FROM leagues
+        WHERE id <> ? AND (code IN (?, ?) OR lower(name) = ?)
+        """,
+        (league_id, "HOME", "RJRXI1M", "the clubhouse"),
+    )
+    if demo_seed_enabled():
+        for bot in conn.execute("SELECT id FROM users WHERE email LIKE '%@bots.chalked.local'").fetchall():
+            join_league(conn, bot["id"], league_id)
+    ensure_active_slate(conn, league_id)
 
 
 def create_user(conn: sqlite3.Connection, data: dict, bot: bool = False) -> dict:
@@ -812,7 +839,7 @@ def league_dict(conn: sqlite3.Connection, row: sqlite3.Row, user_id: str | None 
     season_weeks = int(row["season_weeks"])
     return {
         "id": row["id"],
-        "code": row["code"],
+        "code": row["code"] if mine else None,
         "name": row["name"],
         "description": row["description"],
         "owner_id": row["owner_id"],
@@ -867,7 +894,14 @@ def create_league(conn: sqlite3.Connection, owner_id: str, data: dict) -> dict:
     league_id = new_id("lg")
     settings = {**DEFAULT_SETTINGS, **{k: data[k] for k in DEFAULT_SETTINGS if k in data}}
     validate_league_settings(settings)
-    code = (data.get("code") or make_code()).upper()
+    code = re.sub(r"[^A-Z0-9]", "", str(data.get("code") or make_code()).upper())[:12]
+    if len(code) < 4:
+        raise ApiError(400, "League code must be at least 4 letters or numbers")
+    visibility = str(data.get("visibility") or "open").strip().lower()
+    if visibility not in {"open", "private"}:
+        raise ApiError(400, "League visibility must be open or private")
+    if conn.execute("SELECT 1 FROM leagues WHERE code = ?", (code,)).fetchone():
+        raise ApiError(409, "League code is already taken")
     conn.execute(
         """
         INSERT INTO leagues (
@@ -882,7 +916,7 @@ def create_league(conn: sqlite3.Connection, owner_id: str, data: dict) -> dict:
             data["name"].strip(),
             data.get("description", "A Chalked league."),
             owner_id,
-            data.get("visibility", "open"),
+            visibility,
             settings["bankroll"],
             settings["min_stake"],
             settings["max_stake"],
