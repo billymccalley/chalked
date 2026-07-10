@@ -64,7 +64,7 @@ def render_matchup_card_png(share: dict[str, Any], static_root: Path) -> bytes:
     fonts = FontBook(static_root)
 
     draw_soft_background(image)
-    draw.rounded_rectangle((42, 38, W - 42, H - 38), radius=30, fill=CARD, outline=(255, 197, 61, 96), width=2)
+    draw.rounded_rectangle((42, 38, W - 42, H - 38), radius=30, fill=CARD, outline=(255, 197, 61, 54), width=1)
     draw_header(image, draw, fonts, share, static_root)
 
     players = share["players"]
@@ -98,7 +98,7 @@ def draw_header(image: Image.Image, draw: ImageDraw.ImageDraw, fonts: "FontBook"
     pill = clamp_text(draw, stat, fonts.pill, 360)
     pill_w = text_width(draw, pill, fonts.pill) + 42
     x2 = W - 76
-    draw.rounded_rectangle((x2 - pill_w, 76, x2, 118), radius=21, fill=PANEL, outline=(255, 197, 61, 115), width=1)
+    draw.rounded_rectangle((x2 - pill_w, 76, x2, 118), radius=21, fill="#101823")
     draw.text((x2 - pill_w + 21, 86), pill, font=fonts.pill, fill=GOLD)
     status = clamp_text(draw, status_line(share), fonts.body, 470)
     draw.text((x2 - text_width(draw, status, fonts.body), 128), status, font=fonts.body, fill=MUTED)
@@ -216,17 +216,18 @@ def draw_market(image: Image.Image, draw: ImageDraw.ImageDraw, fonts: "FontBook"
     a_w = int(width * int(market.get("a") or 0) / total)
     t_w = int(width * int(market.get("tie") or 0) / total)
     b_w = max(0, width - a_w - t_w)
+    color_a = readable_color(TEAM_COLORS.get((share.get("players") or {}).get("a", {}).get("team"), RED))
+    color_b = readable_color(TEAM_COLORS.get((share.get("players") or {}).get("b", {}).get("team"), GREEN))
     layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
     layer_draw = ImageDraw.Draw(layer)
     layer_draw.rounded_rectangle((x, y, x + width, y + height), radius=height // 2, fill="#243246")
-    layer_draw.rectangle((x, y, x + a_w, y + height), fill="#D84A40")
-    layer_draw.rectangle((x + a_w, y, x + a_w + t_w, y + height), fill=GOLD)
-    layer_draw.rectangle((x + a_w + t_w, y, x + a_w + t_w + b_w, y + height), fill=GREEN)
+    draw_gradient(layer, x, y, max(1, a_w), height, color_a, blend_hex(color_a, GOLD, 0.18))
+    draw_gradient(layer, x + a_w, y, max(1, t_w), height, blend_hex(color_a, GOLD, 0.68), blend_hex(GOLD, color_b, 0.32))
+    draw_gradient(layer, x + a_w + t_w, y, max(1, b_w), height, blend_hex(GOLD, color_b, 0.18), color_b)
     mask = Image.new("L", image.size, 0)
     ImageDraw.Draw(mask).rounded_rectangle((x, y, x + width, y + height), radius=height // 2, fill=255)
     layer.putalpha(mask)
     image.alpha_composite(layer)
-    draw.rounded_rectangle((x, y, x + width, y + height), radius=height // 2, outline=(255, 255, 255, 18), width=1)
 
     pct_a = round(100 * int(market.get("a") or 0) / total)
     pct_t = round(100 * int(market.get("tie") or 0) / total)
@@ -236,6 +237,56 @@ def draw_market(image: Image.Image, draw: ImageDraw.ImageDraw, fonts: "FontBook"
     draw.text((x + width // 2 - text_width(draw, tie, fonts.body_b) // 2, y + 31), tie, font=fonts.body_b, fill=GOLD)
     right = f"{pct_b}% crowd"
     draw.text((x + width - text_width(draw, right, fonts.body), y + 31), right, font=fonts.body, fill=MUTED)
+
+
+def draw_gradient(image: Image.Image, x: int, y: int, width: int, height: int, left: str, right: str) -> None:
+    if width <= 0:
+        return
+    d = ImageDraw.Draw(image)
+    lrgb = hex_to_rgb(left)
+    rrgb = hex_to_rgb(right)
+    for i in range(width):
+        t = 0 if width == 1 else i / (width - 1)
+        color = tuple(round(lrgb[j] + (rrgb[j] - lrgb[j]) * t) for j in range(3))
+        d.line((x + i, y, x + i, y + height), fill=(*color, 255))
+
+
+def readable_color(hex_color: str) -> str:
+    rgb = hex_to_rgb(hex_color)
+    if luminance(rgb) < 0.13:
+        rgb = blend_rgb(rgb, (255, 255, 255), 0.34)
+    return rgb_to_hex(rgb)
+
+
+def blend_hex(left: str, right: str, amount: float) -> str:
+    return rgb_to_hex(blend_rgb(hex_to_rgb(left), hex_to_rgb(right), amount))
+
+
+def blend_rgb(left: tuple[int, int, int], right: tuple[int, int, int], amount: float) -> tuple[int, int, int]:
+    return tuple(round(left[i] + (right[i] - left[i]) * amount) for i in range(3))
+
+
+def hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
+    clean = str(hex_color or GOLD).lstrip("#")
+    if len(clean) == 3:
+        clean = "".join(ch * 2 for ch in clean)
+    try:
+        n = int(clean[:6], 16)
+    except ValueError:
+        return (255, 197, 61)
+    return ((n >> 16) & 255, (n >> 8) & 255, n & 255)
+
+
+def rgb_to_hex(rgb: tuple[int, int, int]) -> str:
+    return "#{:02X}{:02X}{:02X}".format(*rgb)
+
+
+def luminance(rgb: tuple[int, int, int]) -> float:
+    values = []
+    for channel in rgb:
+        c = channel / 255
+        values.append(c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4)
+    return 0.2126 * values[0] + 0.7152 * values[1] + 0.0722 * values[2]
 
 
 def draw_pick_strip(draw: ImageDraw.ImageDraw, fonts: "FontBook", share: dict[str, Any]) -> None:
