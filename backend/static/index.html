@@ -22,6 +22,7 @@
 <meta name="twitter:title" content="Chalked - Pick the player. Fade the crowd.">
 <meta name="twitter:description" content="Daily MLB 1v1 player markets with league standings, tie picks, and payouts driven by the room.">
 <meta name="twitter:image" content="https://playchalked.com/assets/chalked-preview-v2.png">
+<meta name="twitter:image:alt" content="Chalked - Pick the player. Fade the crowd.">
 <meta name="twitter:site" content="@playchalked">
 <link rel="icon" type="image/png" href="/assets/chalked-logo-card.png">
 <link rel="apple-touch-icon" href="/assets/chalked-logo-card.png">
@@ -437,11 +438,16 @@ a{color:var(--blue)}
 .section-h{font-family:var(--disp);font-weight:800;font-size:19px;letter-spacing:-.02em;margin:8px 0 12px}
 .pickrow{background:var(--panel);border:1px solid var(--line);border-radius:var(--rad-s);padding:12px 14px;display:flex;
   justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.pickrow.won{border-color:rgba(46,217,138,.34);background:linear-gradient(90deg,rgba(46,217,138,.075),var(--panel) 46%)}
+.pickrow.lost{border-color:rgba(255,107,107,.34);background:linear-gradient(90deg,rgba(255,107,107,.07),var(--panel) 46%)}
 .pickrow .pr-main{font-weight:600}
 .pickrow .pr-main .sideA{color:var(--red)} .pickrow .pr-main .sideB{color:var(--blue)}
 .pickrow .pr-sub{font-size:12px;color:var(--muted)}
 .pickrow .pr-num{font-family:var(--mono);font-size:13px;text-align:right}
 .pickrow .pr-num b{color:var(--green)}
+.pick-result{display:inline-flex;align-items:center;margin-right:7px;padding:3px 7px;border-radius:999px;font-family:var(--disp);font-size:11px;font-weight:900;letter-spacing:.08em}
+.pick-result.win{color:var(--green);background:rgba(46,217,138,.1);border:1px solid rgba(46,217,138,.36)}
+.pick-result.loss{color:var(--loss);background:rgba(255,107,107,.09);border:1px solid rgba(255,107,107,.36)}
 .week-block{margin-bottom:22px}
 .week-block h4{font-family:var(--disp);font-weight:600;font-size:13.5px;color:var(--muted);margin-bottom:8px;display:flex;justify-content:space-between}
 .empty{border:1px dashed var(--line);border-radius:var(--rad);padding:34px 20px;text-align:center;color:var(--muted)}
@@ -1625,6 +1631,13 @@ function sideName(m, side){
   if(side === 'tie') return 'Tie';
   return PLAYERS[m[side]]?.name || side;
 }
+function pickMatchupText(m, side){
+  const a = sideName(m, 'a');
+  const b = sideName(m, 'b');
+  if(side === 'tie') return `Tie between ${a} and ${b}`;
+  const opponent = side === 'a' ? b : a;
+  return `${sideName(m, side)} over ${opponent}`;
+}
 function sideColor(side){
   return side === 'a' ? 'var(--side-a,var(--red))' : side === 'b' ? 'var(--side-b,var(--blue))' : 'var(--gold)';
 }
@@ -2080,12 +2093,11 @@ function renderPicks(){
       const m = l.matchups.find(x=>x.id===p.matchupId);
       if(!m) return '';
       const won = m.resolved ? p.side===m.winner : null;
-      const opp = p.side === 'tie' ? 'both players' : (PLAYERS[m[p.side==='a'?'b':'a']]?.name || 'opponent');
       const right = m.resolved
         ? `<span class="net ${won?'pos':'neg'}" style="font-family:var(--mono);font-weight:700">${won?fmt(p.payout):'-'+p.stake}</span>`
         : `${p.stake} pts @ ${p.multAtLock.toFixed(2)}x<br><b>-> ${Math.round(p.stake*p.multAtLock*streakBonus(l.user.streak))}</b>`;
       return `<div class="pickrow">
-        <div><div class="pr-main"><span class="${p.side==='a'?'sideA':p.side==='b'?'sideB':'gold'}">${sideName(m, p.side)}</span> ${p.side==='tie'?'between':'over'} ${opp}</div>
+        <div><div class="pr-main"><span class="${p.side==='a'?'sideA':p.side==='b'?'sideB':'gold'}">${esc(pickMatchupText(m, p.side))}</span></div>
         <div class="pr-sub">${m.statCategory}</div></div>
         <div class="pr-num">${right}</div></div>`;
     }).join('');
@@ -2102,9 +2114,8 @@ function renderPicks(){
         const value = won ? Number(p.payout || 0) : -Number(p.stake || 0);
         net += value;
         if(won) wins++; else losses++;
-        const picked = sideName(m, p.side);
         const winner = sideName(m, m.winner);
-        return `<div class="pickrow ${won?'won':'lost'}"><div><div class="pr-main"><span class="${won?'net pos':'net neg'}">${won?'WIN':'LOSS'}</span> ${esc(picked)} ${p.side==='tie'?'':'over the field'}</div>
+        return `<div class="pickrow ${won?'won':'lost'}"><div><div class="pr-main"><span class="pick-result ${won?'win':'loss'}">${won?'WIN':'LOSS'}</span>${esc(pickMatchupText(m, p.side))}</div>
           <div class="pr-sub">${esc(m.statCategory)} - winner ${esc(winner)} - ${m.actualA ?? 0} to ${m.actualB ?? 0} ${esc(m.unit)}</div></div>
           <div class="pr-num"><span class="net ${won?'pos':'neg'}" style="font-weight:700">${fmt(value)}</span></div></div>`;
       }).join('');
@@ -2116,7 +2127,7 @@ function renderPicks(){
   h.innerHTML = l.user.history.length ? l.user.history.slice().reverse().map(wk=>`
     <div class="week-block"><h4><span>${slateDayLabel(wk)} - ${wk.w}W-${wk.l}L</span>
       <span class="net ${wk.net>=0?'pos':'neg'}" style="font-family:var(--mono)">${fmt(wk.net)}</span></h4>
-      ${wk.rows.map(r=>`<div class="pickrow"><div><div class="pr-main">${r.txt}</div><div class="pr-sub">${r.sub}</div></div>
+      ${wk.rows.map(r=>`<div class="pickrow ${r.net>=0?'won':'lost'}"><div><div class="pr-main">${r.txt}</div><div class="pr-sub">${r.sub}</div></div>
         <div class="pr-num"><span class="net ${r.net>=0?'pos':'neg'}" style="font-weight:700">${fmt(r.net)}</span></div></div>`).join('')}
     </div>`).join('')
     : `<div class="empty"><b>Nothing settled yet</b>Your past slates will show up here.</div>`;
@@ -2195,7 +2206,6 @@ function simulateWeek(){
   l.picks.forEach(p=>{
     const m = l.matchups.find(x=>x.id===p.matchupId);
     const won = p.side===m.winner;
-    const meName = sideName(m, p.side), oppName = p.side === 'tie' ? 'both players' : PLAYERS[m[p.side==='a'?'b':'a']].name;
     if(won){
       const effMult = p.multAtLock + (m.marginBonusHit ? l.settings.marginBonus : 0);
       p.payout = Math.round(p.stake * effMult * streakBonus(l.user.streak));
@@ -2203,10 +2213,10 @@ function simulateWeek(){
       if(p.multAtLock>=3) l.user.badges.contra = true;
       if(l.user.streak>=3) l.user.badges.hot = true;
       if(p.stake>=400) l.user.badges.roller = true;
-      rows.push({txt:`${meName} over ${oppName} WIN`, sub:`${p.stake} @ ${p.multAtLock.toFixed(2)}x${m.marginBonusHit?' +'+l.settings.marginBonus.toFixed(2)+'x':''}`, net:p.payout});
+      rows.push({txt:`<span class="pick-result win">WIN</span>${esc(pickMatchupText(m, p.side))}`, sub:`${p.stake} @ ${p.multAtLock.toFixed(2)}x${m.marginBonusHit?' +'+l.settings.marginBonus.toFixed(2)+'x':''}`, net:p.payout});
     } else {
       net -= p.stake; l.user.streak = 0; l.user.l++; wL++;
-      rows.push({txt:`${meName} over ${oppName} LOSS`, sub:`${p.stake} @ ${p.multAtLock.toFixed(2)}x`, net:-p.stake});
+      rows.push({txt:`<span class="pick-result loss">LOSS</span>${esc(pickMatchupText(m, p.side))}`, sub:`${p.stake} @ ${p.multAtLock.toFixed(2)}x`, net:-p.stake});
     }
   });
   if((l.user.w+l.user.l)>=10 && l.user.w/(l.user.w+l.user.l)>=0.6) l.user.badges.sharp = true;
@@ -2255,7 +2265,7 @@ function showSlateDamage(){
     const value = Number(p.payout ?? (won ? Math.round(p.stake * p.multAtLock) : -p.stake));
     net += value;
     return {
-      txt:`${sideName(m || {}, p.side)} ${won?'WIN':'LOSS'}`,
+      txt:m ? `<span class="pick-result ${won?'win':'loss'}">${won?'WIN':'LOSS'}</span>${esc(pickMatchupText(m, p.side))}` : `${sideName(m || {}, p.side)} ${won?'WIN':'LOSS'}`,
       sub:m ? `${p.stake} @ ${p.multAtLock.toFixed(2)}x - ${m.actualA ?? 0} to ${m.actualB ?? 0} ${m.unit}` : `${p.stake} pts`,
       net:value
     };

@@ -316,6 +316,7 @@ def inject_share_meta(html_text: str, meta: dict[str, str]) -> str:
         (r'<meta name="twitter:title" content="[^"]*">', f'<meta name="twitter:title" content="{title}">'),
         (r'<meta name="twitter:description" content="[^"]*">', f'<meta name="twitter:description" content="{description}">'),
         (r'<meta name="twitter:image" content="[^"]*">', f'<meta name="twitter:image" content="{image}">'),
+        (r'<meta name="twitter:image:alt" content="[^"]*">', f'<meta name="twitter:image:alt" content="{title}">'),
     ]
     for pattern, replacement in replacements:
         html_text = re.sub(pattern, replacement, html_text, count=1, flags=re.DOTALL)

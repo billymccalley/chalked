@@ -82,10 +82,11 @@ def render_matchup_card_png(share: dict[str, Any], static_root: Path) -> bytes:
 def draw_soft_background(image: Image.Image) -> None:
     layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
-    d.ellipse((730, -230, 1370, 360), fill=(255, 197, 61, 32))
-    d.ellipse((-220, 380, 420, 890), fill=(46, 217, 138, 18))
-    d.rounded_rectangle((72, 72, W - 72, H - 72), radius=24, outline=(255, 255, 255, 14), width=1)
-    image.alpha_composite(layer.filter(ImageFilter.GaussianBlur(34)))
+    d.ellipse((780, -230, 1350, 300), fill=(255, 197, 61, 18))
+    d.ellipse((-260, 400, 370, 900), fill=(46, 217, 138, 13))
+    d.ellipse((120, -260, 590, 180), fill=(74, 144, 226, 8))
+    d.rounded_rectangle((76, 74, W - 76, H - 74), radius=24, outline=(255, 255, 255, 10), width=1)
+    image.alpha_composite(layer.filter(ImageFilter.GaussianBlur(54)))
 
 
 def draw_header(image: Image.Image, draw: ImageDraw.ImageDraw, fonts: "FontBook", share: dict[str, Any], static_root: Path) -> None:
@@ -335,6 +336,11 @@ class FontBook:
 
 def load_font(size: int, bold: bool = False) -> ImageFont.ImageFont:
     candidates = [
+        "C:/Windows/Fonts/Inter-Bold.ttf" if bold else "C:/Windows/Fonts/Inter-Regular.ttf",
+        "C:/Windows/Fonts/Inter.ttf",
+        "/usr/share/fonts/truetype/inter/Inter-Bold.ttf" if bold else "/usr/share/fonts/truetype/inter/Inter-Regular.ttf",
+        "/usr/share/fonts/opentype/inter/Inter-Bold.otf" if bold else "/usr/share/fonts/opentype/inter/Inter-Regular.otf",
+        "/usr/local/share/fonts/Inter-Bold.ttf" if bold else "/usr/local/share/fonts/Inter-Regular.ttf",
         "C:/Windows/Fonts/arialbd.ttf" if bold else "C:/Windows/Fonts/arial.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     ]
