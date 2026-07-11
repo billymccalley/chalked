@@ -85,7 +85,7 @@ def render_slate_results_card_png(share: dict[str, Any], static_root: Path) -> b
     fonts = FontBook(static_root)
 
     draw_soft_background(image)
-    draw.rounded_rectangle((42, 38, W - 42, H - 38), radius=30, fill=CARD, outline=(255, 197, 61, 54), width=1)
+    draw.rounded_rectangle((42, 38, W - 42, H - 38), radius=30, fill=CARD, outline=(255, 197, 61, 34), width=1)
     add_logo(image, static_root, (80, 70), 54)
     draw.text((148, 76), "Chalked", font=fonts.brand, fill=TEXT)
     draw.text((148, 118), "Slate Results", font=fonts.label, fill=FAINT)
@@ -107,28 +107,26 @@ def render_slate_results_card_png(share: dict[str, Any], static_root: Path) -> b
     net = int(share.get("net") or 0)
     net_text = signed_points(net)
     net_color = GREEN if net >= 0 else RED
-    draw.text((W - 78 - text_width(draw, net_text, fonts.result_hero), 154), net_text, font=fonts.result_hero, fill=net_color)
-    draw.text((W - 78 - text_width(draw, "net this slate", fonts.label), 218), "net this slate", font=fonts.label, fill=FAINT)
+    draw.text((W - 78 - text_width(draw, net_text, fonts.result_hero), 160), net_text, font=fonts.result_hero, fill=net_color)
+    draw.text((W - 78 - text_width(draw, "net this slate", fonts.label), 222), "net this slate", font=fonts.label, fill=FAINT)
 
     rows = list(share.get("rows") or [])
     wins = sum(1 for row in rows if row.get("won"))
     losses = max(0, len(rows) - wins)
     best = max([int(row.get("payout") or 0) for row in rows] or [0])
     worst = min([int(row.get("payout") or 0) for row in rows] or [0])
-    chips = [
-        ("Record", f"{wins}-{losses}", GOLD),
-        ("Best hit", signed_points(best), GREEN if best >= 0 else RED),
-        ("Worst miss", signed_points(worst), RED if worst < 0 else MUTED),
-        ("Daily rank", str(share.get("rank_label") or "-"), GOLD),
+    chip_specs = [
+        (78, 238, "Record", f"{wins}-{losses}", GOLD),
+        (314, 238, "Best hit", signed_points(best), GREEN if best >= 0 else soft_red()),
+        (550, 238, "Worst miss", signed_points(worst), soft_red() if worst < 0 else MUTED),
+        (786, 238, "Daily rank", str(share.get("rank_label") or "-"), GOLD),
     ]
-    chip_x = 78
-    for label, value, color in chips:
-        draw_stat_chip(draw, fonts, chip_x, 252, label, value, color)
-        chip_x += 260
+    for x, y, label, value, color in chip_specs:
+        draw_stat_chip(draw, fonts, x, y, label, value, color)
 
-    draw.text((78, 335), "Biggest swings", font=fonts.label, fill=FAINT)
+    draw.text((78, 326), "Biggest swings", font=fonts.label, fill=FAINT)
     highlights = sorted(rows, key=lambda row: abs(int(row.get("payout") or 0)), reverse=True)[:3]
-    y = 356
+    y = 348
     if not highlights:
         draw.rounded_rectangle((78, y, W - 78, y + 78), radius=18, fill=PANEL, outline=LINE, width=1)
         draw.text((108, y + 26), "No picks on this slate.", font=fonts.body_b, fill=MUTED)
@@ -138,7 +136,7 @@ def render_slate_results_card_png(share: dict[str, Any], static_root: Path) -> b
     hidden = max(0, len(rows) - len(highlights))
     if hidden:
         more = f"+ {hidden} more pick{'s' if hidden != 1 else ''} on the full slate"
-        draw.text((78, min(y + 2, 544)), more, font=fonts.body, fill=FAINT)
+        draw.text((78, min(y + 2, 540)), more, font=fonts.body, fill=FAINT)
 
     site = "playchalked.com"
     draw.text((W - 78 - text_width(draw, site, fonts.body_b), 558), site, font=fonts.body_b, fill=GOLD)
@@ -150,10 +148,11 @@ def render_slate_results_card_png(share: dict[str, Any], static_root: Path) -> b
 
 def draw_result_row(draw: ImageDraw.ImageDraw, fonts: "FontBook", row: dict[str, Any], y: int) -> None:
     won = bool(row.get("won"))
-    color = GREEN if won else RED
+    color = GREEN if won else soft_red()
     status = "WIN" if won else "LOSS"
-    draw.rounded_rectangle((78, y, W - 78, y + 52), radius=16, fill="#0F1721", outline=(255, 255, 255, 18), width=1)
-    draw.rounded_rectangle((96, y + 15, 158, y + 37), radius=11, fill=blend_hex(color, BG, 0.72), outline=color, width=1)
+    draw.rounded_rectangle((78, y, W - 78, y + 52), radius=16, fill="#0F1721", outline="#263445", width=1)
+    draw.rounded_rectangle((78, y, 84, y + 52), radius=3, fill=color)
+    draw.rounded_rectangle((98, y + 15, 156, y + 37), radius=11, fill=blend_hex(color, BG, 0.76))
     draw.text((127 - text_width(draw, status, fonts.result_badge) / 2, y + 20), status, font=fonts.result_badge, fill=color)
 
     side = str(row.get("side_label") or "Pick")
@@ -166,13 +165,13 @@ def draw_result_row(draw: ImageDraw.ImageDraw, fonts: "FontBook", row: dict[str,
 
     payout = int(row.get("payout") or 0)
     value = signed_points(payout)
-    draw.text((W - 102 - text_width(draw, value, fonts.result_row), y + 16), value, font=fonts.result_row, fill=GREEN if payout >= 0 else RED)
+    draw.text((W - 102 - text_width(draw, value, fonts.result_row), y + 16), value, font=fonts.result_row, fill=GREEN if payout >= 0 else soft_red())
 
 
 def draw_stat_chip(draw: ImageDraw.ImageDraw, fonts: "FontBook", x: int, y: int, label: str, value: str, color: str) -> None:
-    draw.rounded_rectangle((x, y, x + 230, y + 54), radius=16, fill=PANEL, outline=(255, 255, 255, 18), width=1)
-    draw.text((x + 18, y + 10), label.upper(), font=fonts.result_sub, fill=FAINT)
-    draw.text((x + 18, y + 29), value, font=fonts.body_b, fill=color)
+    draw.rounded_rectangle((x, y, x + 214, y + 50), radius=14, fill="#0F1721", outline="#263445", width=1)
+    draw.text((x + 16, y + 9), label.upper(), font=fonts.result_sub, fill=FAINT)
+    draw.text((x + 16, y + 27), value, font=fonts.body_b, fill=color)
 
 
 def draw_soft_background(image: Image.Image) -> None:
@@ -356,6 +355,10 @@ def readable_color(hex_color: str) -> str:
     if luminance(rgb) < 0.13:
         rgb = blend_rgb(rgb, (255, 255, 255), 0.34)
     return rgb_to_hex(rgb)
+
+
+def soft_red() -> str:
+    return "#FF6B6B"
 
 
 def blend_hex(left: str, right: str, amount: float) -> str:
