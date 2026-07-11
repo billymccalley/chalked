@@ -513,6 +513,7 @@ table.board{width:100%;border-collapse:collapse;background:linear-gradient(180de
 .rv-total.in{opacity:1}
 .rv-total .lab{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
 .rv-total .big{font-family:var(--mono);font-weight:700;font-size:42px}
+.rv-total .rank{font-family:var(--disp);font-weight:800;color:var(--gold);font-size:14px;margin-top:2px}
 
 /* toast */
 #toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--panel);
@@ -764,7 +765,7 @@ table.board{width:100%;border-collapse:collapse;background:linear-gradient(180de
   <div class="modal">
     <h3 id="rvTitle">Week 1 - Day 1 Results</h3>
     <div id="rvRows"></div>
-    <div class="rv-total" id="rvTotal"><div class="lab">Net this slate</div><div class="big" id="rvNet">+0</div></div>
+    <div class="rv-total" id="rvTotal"><div class="lab">Net this slate</div><div class="big" id="rvNet">+0</div><div class="rank" id="rvRank"></div></div>
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
       <button class="btn gold" id="rvClose" onclick="closeReveal()">See the damage</button>
       <button class="btn ghost" id="rvShare" onclick="shareSlateResults()">Share results</button>
@@ -2326,7 +2327,8 @@ function showSlateDamage(){
 }
 
 function showReveal(net, rows){
-  $('#rvTitle').textContent = `${slateDayLabel(L())} Results`;
+  const l = L();
+  $('#rvTitle').textContent = `${slateDayLabel(l)} Results`;
   const box = $('#rvRows');
   box.innerHTML = rows.length ? rows.map(r=>`
     <div class="rv-row"><div class="rv-m">${r.txt}<small>${r.sub}</small></div>
@@ -2334,8 +2336,10 @@ function showReveal(net, rows){
     : `<p style="color:var(--muted);text-align:center;padding:14px 0">You sat this slate out. The league did not.</p>`;
   $('#rvNet').textContent = fmt(net);
   $('#rvNet').style.color = net>=0 ? 'var(--green)' : 'var(--loss)';
+  $('#rvRank').textContent = '';
   $('#rvTotal').classList.remove('in');
   $('#reveal').classList.remove('hide');
+  hydrateRevealRank(l);
   // staggered reveal
   const rws = box.querySelectorAll('.rv-row');
   rws.forEach((r,i)=>setTimeout(()=>r.classList.add('in'), 250+i*450));
@@ -2343,6 +2347,18 @@ function showReveal(net, rows){
     $('#rvTotal').classList.add('in');
     countUp($('#rvNet'), net);
   }, 350+rws.length*450);
+}
+async function hydrateRevealRank(l){
+  if(!API_MODE || !l?.id || !l?.selectedSlateId || !apiUser?.id) return;
+  const rankEl = $('#rvRank');
+  if(!rankEl) return;
+  rankEl.textContent = 'Checking daily rank...';
+  try{
+    const share = await apiFetch(`/api/leagues/${encodeURIComponent(l.id)}/slates/${encodeURIComponent(l.selectedSlateId)}/share`);
+    rankEl.textContent = share?.rank_label ? `Rank ${share.rank_label} today` : '';
+  }catch(e){
+    rankEl.textContent = '';
+  }
 }
 function countUp(el, target){
   const t0 = performance.now(), dur = 900, from = 0;

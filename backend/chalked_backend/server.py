@@ -644,6 +644,14 @@ def slates_route(req: RequestHandler, params: dict[str, str]) -> dict:
         return recent_slates(conn, user["id"], params["league_id"])
 
 
+def slate_share_route(req: RequestHandler, params: dict[str, str]) -> dict:
+    user = req.current_user()
+    with transaction() as conn:
+        ensure_seeded(conn)
+        require_member(conn, user["id"], params["league_id"])
+        return public_slate_share(conn, params["slate_id"], user["id"])
+
+
 def refresh_slate_route(req: RequestHandler, params: dict[str, str]) -> dict:
     user = req.current_user()
     with transaction() as conn:
@@ -765,6 +773,7 @@ ROUTES: list[tuple[str, str, RouteHandler]] = [
     ("PATCH", r"/api/leagues/(?P<league_id>[^/]+)/settings", settings_route),
     ("GET", r"/api/leagues/(?P<league_id>[^/]+)/slate", slate_route),
     ("GET", r"/api/leagues/(?P<league_id>[^/]+)/slates", slates_route),
+    ("GET", r"/api/leagues/(?P<league_id>[^/]+)/slates/(?P<slate_id>[^/]+)/share", slate_share_route),
     ("POST", r"/api/leagues/(?P<league_id>[^/]+)/slate/refresh", refresh_slate_route),
     ("GET", r"/api/leagues/(?P<league_id>[^/]+)/picks", picks_route),
     ("POST", r"/api/leagues/(?P<league_id>[^/]+)/picks", pick_route),

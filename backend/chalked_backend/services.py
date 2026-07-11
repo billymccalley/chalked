@@ -2214,7 +2214,7 @@ def public_slate_share(conn: sqlite3.Connection, slate_id: str, user_id: str | N
                 "status": pick["status"],
                 "won": won,
                 "side": pick["side"],
-                "side_label": share_side_name(pick, pick["side"]),
+                "side_label": share_pick_label(pick, pick["side"]),
                 "stake": int(pick["stake"] or 0),
                 "mult_at_lock": float(pick["mult_at_lock"] or 0),
                 "payout": payout,
@@ -2270,6 +2270,16 @@ def share_side_name(row: sqlite3.Row, side: str) -> str:
     if side == "b":
         return row["player_b_name"]
     return "the tie"
+
+
+def share_pick_label(row: sqlite3.Row, side: str) -> str:
+    if side == "tie":
+        return f"Tie: {row['player_a_name']} / {row['player_b_name']}"
+    if side == "a":
+        return f"{row['player_a_name']} over {row['player_b_name']}"
+    if side == "b":
+        return f"{row['player_b_name']} over {row['player_a_name']}"
+    return share_side_name(row, side)
 
 
 def ordinal(value: int) -> str:
