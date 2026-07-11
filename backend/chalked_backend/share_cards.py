@@ -101,14 +101,14 @@ def render_slate_results_card_png(share: dict[str, Any], static_root: Path) -> b
 
     manager = clamp_text(draw, str(share.get("manager") or "Manager"), fonts.player, 520)
     league = clamp_text(draw, str(share.get("league_name") or "Chalked"), fonts.body, 520)
-    draw.text((78, 158), manager, font=fonts.player, fill=TEXT)
-    draw.text((78, 197), league, font=fonts.body, fill=MUTED)
+    draw.text((78, 152), manager, font=fonts.player, fill=TEXT)
+    draw.text((78, 191), league, font=fonts.body, fill=MUTED)
 
     net = int(share.get("net") or 0)
     net_text = signed_points(net)
     net_color = GREEN if net >= 0 else RED
-    draw.text((W - 78 - text_width(draw, net_text, fonts.result_hero), 160), net_text, font=fonts.result_hero, fill=net_color)
-    draw.text((W - 78 - text_width(draw, "net this slate", fonts.label), 222), "net this slate", font=fonts.label, fill=FAINT)
+    draw.text((W - 78 - text_width(draw, net_text, fonts.result_hero), 154), net_text, font=fonts.result_hero, fill=net_color)
+    draw.text((W - 78 - text_width(draw, "net this slate", fonts.label), 216), "net this slate", font=fonts.label, fill=FAINT)
 
     rows = list(share.get("rows") or [])
     wins = sum(1 for row in rows if row.get("won"))
@@ -116,15 +116,15 @@ def render_slate_results_card_png(share: dict[str, Any], static_root: Path) -> b
     best = max([int(row.get("payout") or 0) for row in rows] or [0])
     worst = min([int(row.get("payout") or 0) for row in rows] or [0])
     chip_specs = [
-        (78, 238, "Record", f"{wins}-{losses}", GOLD),
-        (314, 238, "Best hit", signed_points(best), GREEN if best >= 0 else soft_red()),
-        (550, 238, "Worst miss", signed_points(worst), soft_red() if worst < 0 else MUTED),
-        (786, 238, "Daily rank", str(share.get("rank_label") or "-"), GOLD),
+        (78, 246, "Record", f"{wins}-{losses}", GOLD),
+        (314, 246, "Best hit", signed_points(best), GREEN if best >= 0 else soft_red()),
+        (550, 246, "Worst miss", signed_points(worst), soft_red() if worst < 0 else MUTED),
+        (786, 246, "Daily rank", str(share.get("rank_label") or "-"), GOLD),
     ]
     for x, y, label, value, color in chip_specs:
         draw_stat_chip(draw, fonts, x, y, label, value, color)
 
-    draw.text((78, 326), "Biggest swings", font=fonts.label, fill=FAINT)
+    draw.text((78, 325), "Biggest swings", font=fonts.label, fill=FAINT)
     highlights = sorted(rows, key=lambda row: abs(int(row.get("payout") or 0)), reverse=True)[:3]
     y = 348
     if not highlights:
