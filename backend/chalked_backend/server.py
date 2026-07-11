@@ -20,7 +20,7 @@ from urllib.parse import parse_qs, urlparse
 
 from .db import db_path, init_db, transaction
 from .security import new_id
-from .share_cards import render_matchup_card_png
+from .share_cards import render_matchup_card_png, render_slate_results_card_png
 from .storage import upload_backup, upload_image, upload_storage_status
 from .services import (
     ApiError,
@@ -47,6 +47,7 @@ from .services import (
     profile,
     public_user,
     public_matchup_share,
+    public_slate_share,
     refresh_active_slate,
     recent_slates,
     remove_pick,
@@ -126,6 +127,9 @@ class RequestHandler(BaseHTTPRequestHandler):
             if method == "GET" and parsed.path.startswith("/share/matchup/"):
                 self.write_matchup_share(parsed.path)
                 return
+            if method == "GET" and parsed.path.startswith("/share/slate/"):
+                self.write_slate_share(parsed.path)
+                return
             if method == "GET" and not parsed.path.startswith("/api/"):
                 self.write_static(parsed.path)
                 return
@@ -202,6 +206,47 @@ class RequestHandler(BaseHTTPRequestHandler):
             query_parts.append(f"pick={share['pick']['id']}")
         canonical = f"{public}/share/matchup/{share['id']}?{'&'.join(query_parts)}"
         image = f"{public}/share/matchup/{share['id']}/card.png?{'&'.join(query_parts)}&v={share['cache_key']}"
+        html_text = (STATIC_ROOT / "index.html").read_text(encoding="utf-8")
+        replacements = {
+            "title": f"{share['title']} | Chalked",
+            "description": share["description"],
+            "url": canonical,
+            "image": image,
+        }
+        html_text = inject_share_meta(html_text, replacements)
+        body = html_text.encode("utf-8")
+        self.send_response(200)
+        self.send_common_headers()
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def write_slate_share(self, path: str) -> None:
+        match = re.fullmatch(r"/share/slate/(?P<slate_id>[^/]+)(?P<card>/card\.png)?", path)
+        if not match:
+            raise ApiError(404, "Share link not found")
+        user_id = (self.query().get("user") or [None])[0]
+        with transaction() as conn:
+            ensure_seeded(conn)
+            share = public_slate_share(conn, match.group("slate_id"), user_id)
+        if match.group("card"):
+            body = render_slate_results_card_png(share, STATIC_ROOT)
+            self.send_response(200)
+            self.send_common_headers()
+            self.send_header("Content-Type", "image/png")
+            self.send_header("Cache-Control", "public, max-age=300")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        public = os.environ.get("CHALKED_PUBLIC_URL", "").strip().rstrip("/")
+        if not public:
+            proto = "https" if self.is_https() else "http"
+            public = f"{proto}://{self.headers.get('host', '127.0.0.1:8080')}".rstrip("/")
+        query = f"user={share['user_id']}"
+        canonical = f"{public}/share/slate/{share['id']}?{query}"
+        image = f"{public}/share/slate/{share['id']}/card.png?{query}&v={share['cache_key']}"
         html_text = (STATIC_ROOT / "index.html").read_text(encoding="utf-8")
         replacements = {
             "title": f"{share['title']} | Chalked",

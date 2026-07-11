@@ -6,6 +6,7 @@ from pathlib import Path
 
 from backend.chalked_backend import services
 from backend.chalked_backend.share_cards import render_matchup_card_png
+from backend.chalked_backend.share_cards import render_slate_results_card_png
 from backend.chalked_backend.server import cookie_header
 from backend.chalked_backend.storage import upload_image
 from backend.chalked_backend.storage import upload_storage_status
@@ -36,6 +37,7 @@ from backend.chalked_backend.services import (
     player_stat_value,
     profile,
     public_matchup_share,
+    public_slate_share,
     request_email_verification,
     request_password_reset,
     record_system_status,
@@ -213,6 +215,36 @@ class ServiceTests(unittest.TestCase):
             self.assertEqual(image.size, (1200, 630))
             self.assertIsNone(open_share["pick"])
             self.assertEqual(open_image.size, (1200, 630))
+
+    def test_public_slate_share_payload_includes_daily_rank_and_results_card(self):
+        with transaction(self.db_path) as conn:
+            ensure_seeded(conn)
+            user = create_user(conn, {"handle": "slatewinner", "password": "secret123"})
+            rival = create_user(conn, {"handle": "slateloser", "password": "secret123"})
+            league = create_league(conn, user["id"], {"name": "Slate Share", "code": "SLATES"})
+            join_league(conn, rival["id"], league["id"])
+            slate = ensure_active_slate(conn, league["id"])
+            matchup_id = slate["matchups"][0]["id"]
+            create_pick(conn, user["id"], league["id"], {"matchup_id": matchup_id, "side": "a", "stake": 50})
+            create_pick(conn, rival["id"], league["id"], {"matchup_id": matchup_id, "side": "b", "stake": 50})
+            conn.execute(
+                "UPDATE matchups SET status = 'settled', winner_side = 'a', actual_a = 5, actual_b = 2 WHERE id = ?",
+                (matchup_id,),
+            )
+            settle_matchup_picks(conn, matchup_id)
+            conn.execute("UPDATE slates SET status = 'settled' WHERE id = ?", (slate["id"],))
+
+            share = public_slate_share(conn, slate["id"], user["id"])
+            png = render_slate_results_card_png(share, Path("backend/static"))
+            image = Image.open(BytesIO(png))
+
+            self.assertEqual(share["league_name"], "Slate Share")
+            self.assertEqual(share["rank"], 1)
+            self.assertEqual(share["rank_label"], "1st of 2")
+            self.assertGreater(share["net"], 0)
+            self.assertEqual(len(share["rows"]), 1)
+            self.assertIn("ranked 1st of 2", share["description"])
+            self.assertEqual(image.size, (1200, 630))
 
     def test_next_slate_advances_after_settled_week(self):
         with transaction(self.db_path) as conn:

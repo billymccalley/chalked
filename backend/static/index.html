@@ -765,7 +765,10 @@ table.board{width:100%;border-collapse:collapse;background:linear-gradient(180de
     <h3 id="rvTitle">Week 1 - Day 1 Results</h3>
     <div id="rvRows"></div>
     <div class="rv-total" id="rvTotal"><div class="lab">Net this slate</div><div class="big" id="rvNet">+0</div></div>
-    <div style="text-align:center"><button class="btn gold" id="rvClose" onclick="closeReveal()">See the damage</button></div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button class="btn gold" id="rvClose" onclick="closeReveal()">See the damage</button>
+      <button class="btn ghost" id="rvShare" onclick="shareSlateResults()">Share results</button>
+    </div>
   </div>
 </div>
 
@@ -1771,6 +1774,34 @@ async function shareMatchup(id){
         setTimeout(()=>{ btn.classList.remove('copied'); btn.textContent = 'share'; }, 1600);
       });
       toast('Matchup link copied');
+      return;
+    }catch(e){}
+  }
+  toast(url);
+}
+
+function slateResultsShareUrl(){
+  const l = L();
+  const slateId = l?.selectedSlateId || l?.slates?.find(s=>s.status !== 'open')?.id;
+  if(!slateId || !apiUser?.id) return '';
+  return `${location.origin}/share/slate/${encodeURIComponent(slateId)}?user=${encodeURIComponent(apiUser.id)}`;
+}
+async function shareSlateResults(){
+  const l = L();
+  const url = slateResultsShareUrl();
+  if(!l || !url) return toast('Results link not ready yet');
+  const title = `${slateDayLabel(l)} Results`;
+  const text = `My ${l.name} slate results are up on Chalked.`;
+  try{
+    if(navigator.share){
+      await navigator.share({title, text, url});
+      return;
+    }
+  }catch(e){}
+  if(navigator.clipboard?.writeText){
+    try{
+      await navigator.clipboard.writeText(url);
+      toast('Results link copied');
       return;
     }catch(e){}
   }

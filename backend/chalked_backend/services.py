@@ -2157,6 +2157,107 @@ def public_matchup_share(conn: sqlite3.Connection, matchup_id: str, pick_id: str
     }
 
 
+def public_slate_share(conn: sqlite3.Connection, slate_id: str, user_id: str | None = None) -> dict:
+    if not user_id:
+        raise ApiError(400, "Missing share user")
+    slate = conn.execute(
+        """
+        SELECT s.*, l.name league_name, l.id league_id
+        FROM slates s
+        JOIN leagues l ON l.id = s.league_id
+        WHERE s.id = ?
+        """,
+        (slate_id,),
+    ).fetchone()
+    if not slate:
+        raise ApiError(404, "Slate not found")
+    user = conn.execute("SELECT id, handle, display_name FROM users WHERE id = ?", (user_id,)).fetchone()
+    if not user:
+        raise ApiError(404, "User not found")
+
+    picks = conn.execute(
+        """
+        SELECT p.*, m.stat_key, m.stat_label, m.unit, m.winner_side, m.actual_a, m.actual_b,
+               pa.name player_a_name, pb.name player_b_name
+        FROM picks p
+        JOIN matchups m ON m.id = p.matchup_id
+        JOIN players pa ON pa.id = m.player_a_id
+        JOIN players pb ON pb.id = m.player_b_id
+        WHERE p.user_id = ? AND p.league_id = ? AND p.slate_id = ?
+        ORDER BY p.created_at, p.id
+        """,
+        (user_id, slate["league_id"], slate_id),
+    ).fetchall()
+    ranks = conn.execute(
+        """
+        SELECT ms.user_id, COALESCE(SUM(CASE WHEN p.status = 'settled' THEN p.payout ELSE 0 END), 0) net
+        FROM memberships ms
+        LEFT JOIN picks p ON p.user_id = ms.user_id AND p.league_id = ms.league_id AND p.slate_id = ?
+        WHERE ms.league_id = ?
+        GROUP BY ms.user_id
+        ORDER BY net DESC, ms.joined_at
+        """,
+        (slate_id, slate["league_id"]),
+    ).fetchall()
+    net_by_user = {row["user_id"]: int(row["net"] or 0) for row in ranks}
+    my_net = int(net_by_user.get(user_id, 0))
+    rank = 1 + sum(1 for value in net_by_user.values() if value > my_net)
+    member_count = max(1, len(ranks))
+
+    rows = []
+    for pick in picks:
+        won = bool(pick["winner_side"] and pick["side"] == pick["winner_side"])
+        payout = int(pick["payout"] if pick["payout"] is not None else 0)
+        rows.append(
+            {
+                "id": pick["id"],
+                "status": pick["status"],
+                "won": won,
+                "side": pick["side"],
+                "side_label": share_side_name(pick, pick["side"]),
+                "stake": int(pick["stake"] or 0),
+                "mult_at_lock": float(pick["mult_at_lock"] or 0),
+                "payout": payout,
+                "stat_label": STAT_RULES.get(pick["stat_key"], {}).get("label", pick["stat_label"]).replace("This Week", "Game"),
+                "unit": pick["unit"],
+                "actual_a": pick["actual_a"],
+                "actual_b": pick["actual_b"],
+                "player_a": pick["player_a_name"],
+                "player_b": pick["player_b_name"],
+            }
+        )
+
+    week = int(slate["week"] or 1)
+    week_no = ((week - 1) // 7) + 1
+    day = ((week - 1) % 7) + 1
+    manager = user["display_name"] or user["handle"]
+    slate_label = f"Week {week_no} - Day {day}"
+    title = f"{manager}'s {slate_label} Results"
+    description = f"{slate['league_name']} {slate_label}: {manager} went {my_net:+,} pts and ranked {ordinal(rank)} of {member_count}."
+    cache_source = f"{slate['id']}:{user_id}:{slate['status']}:{my_net}:{len(rows)}"
+    return {
+        "id": slate["id"],
+        "league_id": slate["league_id"],
+        "league_name": slate["league_name"],
+        "user_id": user_id,
+        "manager": manager,
+        "handle": user["handle"],
+        "title": title,
+        "description": description,
+        "slate_label": slate_label,
+        "week": week_no,
+        "day": day,
+        "status": slate["status"],
+        "game_date": slate["game_date"],
+        "net": my_net,
+        "rank": rank,
+        "rank_label": f"{ordinal(rank)} of {member_count}",
+        "member_count": member_count,
+        "rows": rows,
+        "cache_key": re.sub(r"[^A-Za-z0-9]+", "", cache_source)[-48:] or slate["id"],
+    }
+
+
 def share_multiplier(min_mult: float, max_mult: float, points: int, total: int) -> float:
     if total <= 0 or points <= 0:
         return float(max_mult)
@@ -2169,6 +2270,14 @@ def share_side_name(row: sqlite3.Row, side: str) -> str:
     if side == "b":
         return row["player_b_name"]
     return "the tie"
+
+
+def ordinal(value: int) -> str:
+    if 10 <= value % 100 <= 20:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(value % 10, "th")
+    return f"{value}{suffix}"
 
 
 def parse_last5(raw: str | None) -> list[float]:

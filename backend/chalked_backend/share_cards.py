@@ -79,6 +79,78 @@ def render_matchup_card_png(share: dict[str, Any], static_root: Path) -> bytes:
     return out.getvalue()
 
 
+def render_slate_results_card_png(share: dict[str, Any], static_root: Path) -> bytes:
+    image = Image.new("RGBA", (W, H), BG)
+    draw = ImageDraw.Draw(image)
+    fonts = FontBook(static_root)
+
+    draw_soft_background(image)
+    draw.rounded_rectangle((42, 38, W - 42, H - 38), radius=30, fill=CARD, outline=(255, 197, 61, 54), width=1)
+    add_logo(image, static_root, (80, 70), 54)
+    draw.text((148, 76), "Chalked", font=fonts.brand, fill=TEXT)
+    draw.text((148, 118), "Slate Results", font=fonts.label, fill=FAINT)
+
+    label = str(share.get("slate_label") or "Slate").upper()
+    pill_w = text_width(draw, label, fonts.pill) + 42
+    draw.rounded_rectangle((W - 76 - pill_w, 76, W - 76, 118), radius=21, fill="#101823")
+    draw.text((W - 76 - pill_w + 21, 86), label, font=fonts.pill, fill=GOLD)
+    rank = str(share.get("rank_label") or "")
+    if rank:
+        rank_text = f"Rank {rank} today"
+        draw.text((W - 76 - text_width(draw, rank_text, fonts.body), 128), rank_text, font=fonts.body, fill=MUTED)
+
+    manager = clamp_text(draw, str(share.get("manager") or "Manager"), fonts.player, 520)
+    league = clamp_text(draw, str(share.get("league_name") or "Chalked"), fonts.body, 520)
+    draw.text((78, 156), manager, font=fonts.player, fill=TEXT)
+    draw.text((78, 193), league, font=fonts.body, fill=MUTED)
+
+    net = int(share.get("net") or 0)
+    net_text = signed_points(net)
+    net_color = GREEN if net >= 0 else RED
+    draw.text((W - 78 - text_width(draw, net_text, fonts.result_big), 152), net_text, font=fonts.result_big, fill=net_color)
+    draw.text((W - 78 - text_width(draw, "net this slate", fonts.label), 206), "net this slate", font=fonts.label, fill=FAINT)
+
+    rows = list(share.get("rows") or [])[:8]
+    y = 252
+    if not rows:
+        draw.rounded_rectangle((78, y, W - 78, y + 84), radius=18, fill=PANEL, outline=LINE, width=1)
+        draw.text((108, y + 28), "No picks on this slate.", font=fonts.body_b, fill=MUTED)
+    for row in rows:
+        draw_result_row(draw, fonts, row, y)
+        y += 39
+
+    footer_y = 560
+    draw.line((78, footer_y - 16, W - 78, footer_y - 16), fill=(255, 255, 255, 18), width=1)
+    tagline = "Share the win. Own the bad beat. Fade the crowd."
+    draw.text((78, footer_y), tagline, font=fonts.body, fill=MUTED)
+    site = "playchalked.com"
+    draw.text((W - 78 - text_width(draw, site, fonts.body_b), footer_y), site, font=fonts.body_b, fill=GOLD)
+
+    out = BytesIO()
+    image.convert("RGB").save(out, format="PNG", optimize=True)
+    return out.getvalue()
+
+
+def draw_result_row(draw: ImageDraw.ImageDraw, fonts: "FontBook", row: dict[str, Any], y: int) -> None:
+    won = bool(row.get("won"))
+    color = GREEN if won else RED
+    status = "WIN" if won else "LOSS"
+    draw.rounded_rectangle((78, y, 140, y + 28), radius=14, fill=blend_hex(color, BG, 0.72), outline=color, width=1)
+    draw.text((109 - text_width(draw, status, fonts.result_badge) / 2, y + 6), status, font=fonts.result_badge, fill=color)
+
+    side = str(row.get("side_label") or "Pick")
+    title = clamp_text(draw, side, fonts.result_row, 620)
+    draw.text((154, y + 1), title, font=fonts.result_row, fill=TEXT)
+    sub = f"{int(row.get('stake') or 0):,} @ {float(row.get('mult_at_lock') or 0):.2f}x"
+    if row.get("actual_a") is not None and row.get("actual_b") is not None:
+        sub += f" - {clean_number(row.get('actual_a'))} to {clean_number(row.get('actual_b'))} {row.get('unit') or ''}"
+    draw.text((154, y + 22), clamp_text(draw, sub, fonts.result_sub, 620), font=fonts.result_sub, fill=FAINT)
+
+    payout = int(row.get("payout") or 0)
+    value = signed_points(payout)
+    draw.text((W - 82 - text_width(draw, value, fonts.result_row), y + 6), value, font=fonts.result_row, fill=GREEN if payout >= 0 else RED)
+
+
 def draw_soft_background(image: Image.Image) -> None:
     layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
@@ -382,6 +454,11 @@ def clean_number(value: Any) -> str:
     return str(int(n)) if n.is_integer() else f"{n:.1f}"
 
 
+def signed_points(value: int | float) -> str:
+    n = int(round(float(value or 0)))
+    return f"+{n:,}" if n > 0 else f"{n:,}"
+
+
 def clamp_text(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont, max_width: int) -> str:
     if text_width(draw, text, font) <= max_width:
         return text
@@ -409,6 +486,10 @@ class FontBook:
         self.pill = load_font(19, bold=True, font_dir=font_dir)
         self.tie = load_font(24, black=True, font_dir=font_dir)
         self.odds = load_font(20, bold=True, font_dir=font_dir)
+        self.result_big = load_font(46, black=True, font_dir=font_dir)
+        self.result_row = load_font(20, bold=True, font_dir=font_dir)
+        self.result_sub = load_font(15, font_dir=font_dir)
+        self.result_badge = load_font(13, bold=True, font_dir=font_dir)
 
 
 def load_font(size: int, bold: bool = False, black: bool = False, font_dir: Path | None = None) -> ImageFont.ImageFont:
