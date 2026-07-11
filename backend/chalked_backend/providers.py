@@ -39,6 +39,7 @@ class GameInfo:
     live_state: str
     teams: tuple[str, str]
     probable_pitchers: tuple[Player, ...] = ()
+    team_ids: tuple[str, str] = ("", "")
 
 
 STAT_RULES = {
@@ -177,6 +178,8 @@ class MlbScheduleProvider:
                 inning = format_inning(linescore)
                 away_abbr = away.get("abbreviation") or away.get("name") or ""
                 home_abbr = home.get("abbreviation") or home.get("name") or ""
+                away_id = str(away.get("id") or "")
+                home_id = str(home.get("id") or "")
                 probable_pitchers = []
                 if away_probable.get("id") and away_probable.get("fullName"):
                     probable_pitchers.append(Player(f"mlb_{away_probable['id']}", str(away_probable["id"]), away_probable["fullName"], away_abbr, "SP", "K"))
@@ -192,6 +195,7 @@ class MlbScheduleProvider:
                         coded,
                         (away_abbr, home_abbr),
                         tuple(probable_pitchers),
+                        (away_id, home_id),
                     )
                 )
         if not games:
@@ -289,6 +293,34 @@ class MlbGameLogProvider:
             raise RuntimeError("MLB game log unavailable") from exc
         splits = (payload.get("stats") or [{}])[0].get("splits") or []
         return sorted(splits, key=lambda split: split.get("date") or "", reverse=True)
+
+
+class MlbRosterProvider:
+    ROSTER_URL = "https://statsapi.mlb.com/api/v1/teams/{team_id}/roster?rosterType=active"
+
+    def __init__(self, timeout: float = 4.0):
+        self.timeout = timeout
+
+    def active_roster(self, team_id: str) -> set[str]:
+        if not team_id:
+            raise RuntimeError("Missing MLB team id")
+        request = urllib.request.Request(
+            self.ROSTER_URL.format(team_id=team_id),
+            headers={"User-Agent": "Chalked/0.1"},
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+        except (OSError, urllib.error.URLError, json.JSONDecodeError) as exc:
+            raise RuntimeError("MLB active roster unavailable") from exc
+        ids = {
+            f"mlb_{str(((entry.get('person') or {}).get('id') or '')).strip()}"
+            for entry in payload.get("roster", [])
+            if str(((entry.get("person") or {}).get("id") or "")).strip()
+        }
+        if not ids:
+            raise RuntimeError("MLB active roster returned no players")
+        return ids
 
 
 def static_schedule(players: Iterable[Player], target_date: date | None = None) -> list[GameInfo]:

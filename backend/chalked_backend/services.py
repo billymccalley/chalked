@@ -15,6 +15,7 @@ from .providers import (
     STAT_RULES,
     MlbLiveFeedProvider,
     MlbGameLogProvider,
+    MlbRosterProvider,
     MlbScheduleProvider,
     MlbStatsProvider,
     PlayerEligibility,
@@ -52,6 +53,7 @@ PITCHER_STAT_GROUPS = ("K", "BF", "IP")
 BATTER_STAT_GROUPS = ("TB", "OB", "H", "R", "RBI", "SPD", "HR", "XBH", "HHR", "BB")
 _SCHEDULE_CACHE: dict[str, tuple[datetime, list]] = {}
 _LIVE_FEED_CACHE: dict[str, tuple[datetime, dict | None]] = {}
+_ROSTER_CACHE: dict[str, tuple[datetime, set[str]]] = {}
 _GAME_LOG_CACHE: dict[tuple[str, str, int], tuple[datetime, list[dict]]] = {}
 _SLATE_SYNC_CACHE: dict[str, datetime] = {}
 
@@ -1428,11 +1430,18 @@ def build_daily_eligibility(players: list[sqlite3.Row], games: list) -> list[Pla
         for team, lineup in ((feed or {}).get("lineups") or {}).items():
             lineups_by_team[team] = {f"mlb_{str(player['id'])}" for player in lineup}
         for team, roster in ((feed or {}).get("rosters") or {}).items():
-            rosters_by_team[team] = {
+            rosters_by_team.setdefault(team, {
                 player_id if str(player_id).startswith("mlb_") else f"mlb_{str(player_id)}"
                 for player_id in roster
                 if str(player_id).strip()
-            }
+            })
+        team_ids = getattr(game, "team_ids", ()) or ()
+        for team, team_id in zip((away, home), team_ids):
+            if not team or not team_id:
+                continue
+            active_roster = cached_active_roster(str(team_id))
+            if active_roster:
+                rosters_by_team[team] = active_roster
 
     static_mode = bool(games) and all(str(game.game_pk).startswith("static-") for game in games)
     probable_ids = {
@@ -1800,6 +1809,19 @@ def cached_live_feed(game_pk: str) -> dict | None:
         feed = None
     _LIVE_FEED_CACHE[game_pk] = (now, feed)
     return feed
+
+
+def cached_active_roster(team_id: str) -> set[str]:
+    now = datetime.now(timezone.utc)
+    cached = _ROSTER_CACHE.get(team_id)
+    if cached and (now - cached[0]).total_seconds() < 3600:
+        return cached[1]
+    try:
+        roster = MlbRosterProvider(timeout=2.5).active_roster(team_id)
+    except RuntimeError:
+        roster = set()
+    _ROSTER_CACHE[team_id] = (now, roster)
+    return roster
 
 
 def hydrate_slate_games(conn: sqlite3.Connection, slate_id: str) -> None:
