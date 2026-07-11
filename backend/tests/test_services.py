@@ -680,6 +680,34 @@ class ServiceTests(unittest.TestCase):
             services.cached_live_feed = original_cached_feed
             os.environ["CHALKED_DISABLE_MLB"] = "1"
 
+    def test_active_roster_filters_scheduled_batter_pool_before_lineups(self):
+        os.environ.pop("CHALKED_DISABLE_MLB", None)
+        games = [
+            GameInfo("game-atl-sea", "2026-07-08", "2026-07-08T22:40:00+00:00", "Scheduled", None, "Preview", ("ATL", "SEA"), ())
+        ]
+        original_cached_feed = services.cached_live_feed
+        services.cached_live_feed = lambda _game_pk: {
+            "lineups": {},
+            "rosters": {
+                "ATL": ["660670"],
+                "SEA": ["677594"],
+            },
+        }
+        try:
+            with transaction(self.db_path) as conn:
+                ensure_seeded(conn)
+                players = conn.execute("SELECT * FROM players WHERE active = 1").fetchall()
+                eligible = build_daily_eligibility(players, games)
+                batter_names = {e.player["name"] for e in eligible if e.player["stat_group"] != "K"}
+
+                self.assertIn("Ronald Acuna Jr.", batter_names)
+                self.assertIn("Julio Rodriguez", batter_names)
+                self.assertNotIn("Matt Olson", batter_names)
+                self.assertTrue(all(e.confidence == "active_roster" for e in eligible if e.player["stat_group"] != "K"))
+        finally:
+            services.cached_live_feed = original_cached_feed
+            os.environ["CHALKED_DISABLE_MLB"] = "1"
+
     def test_api_matchup_players_include_external_ids_for_headshots(self):
         with transaction(self.db_path) as conn:
             ensure_seeded(conn)

@@ -1415,6 +1415,7 @@ def build_daily_eligibility(players: list[sqlite3.Row], games: list) -> list[Pla
     game_by_team: dict[str, Any] = {}
     opponent_by_team: dict[str, str] = {}
     lineups_by_team: dict[str, set[str]] = {}
+    rosters_by_team: dict[str, set[str]] = {}
     for game in games:
         away, home = (game.teams + ("", ""))[:2]
         if away:
@@ -1426,6 +1427,12 @@ def build_daily_eligibility(players: list[sqlite3.Row], games: list) -> list[Pla
         feed = cached_live_feed(game.game_pk)
         for team, lineup in ((feed or {}).get("lineups") or {}).items():
             lineups_by_team[team] = {f"mlb_{str(player['id'])}" for player in lineup}
+        for team, roster in ((feed or {}).get("rosters") or {}).items():
+            rosters_by_team[team] = {
+                player_id if str(player_id).startswith("mlb_") else f"mlb_{str(player_id)}"
+                for player_id in roster
+                if str(player_id).strip()
+            }
 
     static_mode = bool(games) and all(str(game.game_pk).startswith("static-") for game in games)
     probable_ids = {
@@ -1438,6 +1445,9 @@ def build_daily_eligibility(players: list[sqlite3.Row], games: list) -> list[Pla
         game = game_by_team.get(player["team"])
         if not game:
             continue
+        player_live_ids = {str(player["id"])}
+        if player["external_id"]:
+            player_live_ids.add(f"mlb_{str(player['external_id'])}")
 
         if player["stat_group"] == "K":
             if static_mode:
@@ -1452,10 +1462,15 @@ def build_daily_eligibility(players: list[sqlite3.Row], games: list) -> list[Pla
 
         lineup_ids = lineups_by_team.get(player["team"])
         if lineup_ids is not None:
-            if player["id"] not in lineup_ids:
+            if not player_live_ids.intersection(lineup_ids):
                 continue
             confidence = "confirmed"
             reason = "confirmed_starting_lineup"
+        elif rosters_by_team.get(player["team"]) is not None:
+            if not player_live_ids.intersection(rosters_by_team[player["team"]]):
+                continue
+            confidence = "active_roster"
+            reason = "active_roster_team_scheduled"
         else:
             confidence = "demo" if static_mode else "team_scheduled"
             reason = "demo_mode_static_schedule" if static_mode else "team_on_today_schedule"

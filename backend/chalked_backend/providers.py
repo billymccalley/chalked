@@ -224,14 +224,17 @@ class MlbLiveFeedProvider:
         linescore = live_data.get("linescore") or {}
         players: dict[str, dict] = {}
         lineups: dict[str, list[dict]] = {}
+        rosters: dict[str, list[str]] = {}
         for team in ((live_data.get("boxscore") or {}).get("teams") or {}).values():
             team_info = team.get("team") or {}
             team_abbr = team_info.get("abbreviation") or team_info.get("name") or ""
             lineup_players: list[dict] = []
+            roster_ids: list[str] = []
             for player in (team.get("players") or {}).values():
                 person = player.get("person") or {}
                 player_id = str(person.get("id") or "").strip()
                 if player_id:
+                    roster_ids.append(player_id)
                     players[player_id] = player.get("stats") or {}
                     batting_order = str(player.get("battingOrder") or "")
                     if batting_order.isdigit() and int(batting_order) % 100 == 0:
@@ -245,6 +248,8 @@ class MlbLiveFeedProvider:
                                 "batting_order": int(batting_order),
                             }
                         )
+            if team_abbr and roster_ids:
+                rosters[team_abbr] = sorted(set(roster_ids))
             if team_abbr and lineup_players:
                 lineups[team_abbr] = sorted(lineup_players, key=lambda p: p["batting_order"])
         return {
@@ -253,6 +258,7 @@ class MlbLiveFeedProvider:
             "inning": format_inning(linescore),
             "players": players,
             "lineups": lineups,
+            "rosters": rosters,
         }
 
 
